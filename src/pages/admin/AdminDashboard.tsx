@@ -69,7 +69,7 @@ export function AdminDashboard() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
     async function fetchData() {
       try {
         const [
@@ -309,7 +309,7 @@ export function AdminDashboard() {
         setUnreadNotificationCount(
           aggregatedNotifications.filter((n) => !n.read).length
         );
-      } catch (error) {
+            } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
         setLoading(false);
@@ -329,10 +329,16 @@ export function AdminDashboard() {
     );
   }
 
+// ✅ FIX 1: Calculate Total Users = Local Users + Tuya Users
+  const totalUsers = (stats?.localUsers || 0) + (stats?.totalTuyaUsers || 0);
+
+  // ✅ FIX 2: Calculate Access Logs Today count from merged logs
+  const accessLogsToday = recentLogs.length;
+
   const statCards = [
     {
       label: "Total Users",
-      value: stats?.totalUsers || 0,
+      value: totalUsers, // ✅ FIXED: Now shows sum of local + Tuya users
       icon: UsersIcon,
       iconClass: "icon-blue",
     },
@@ -350,7 +356,7 @@ export function AdminDashboard() {
     },
     {
       label: "Access Logs Today",
-      value: stats?.accessLogsToday || 0,
+      value: accessLogsToday, // ✅ FIXED: Now shows actual merged logs count
       icon: ActivityIcon,
       iconClass: "icon-purple",
     },
@@ -435,7 +441,7 @@ export function AdminDashboard() {
     }
   };
 
-  return (
+   return (
     <div className="admin-dashboard">
       {/* Stats Grid */}
       <div className="stats-grid">
@@ -464,7 +470,7 @@ export function AdminDashboard() {
           <div className="card-header">
             <h3 className="card-title">Pending Approvals</h3>
             <span className="badge badge-warning">
-              {stats?.pendingApprovals || pendingApprovals.length || 0}
+              {pendingApprovals.length}
             </span>
           </div>
           <div>
@@ -509,12 +515,12 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        {/* Access Logs Today */}
+ {/* Access Logs Today - ✅ FIXED: Now shows proper count */}
         <div className="dashboard-card fixed-height-card">
           <div className="card-header">
             <h3 className="card-title">Access Logs Today</h3>
             <span className="badge badge-default">
-              {stats?.accessLogsToday || recentLogs.length || 0}
+              {accessLogsToday} {/* ✅ FIXED: Shows merged logs count */}
             </span>
           </div>
           <div>
@@ -570,6 +576,7 @@ export function AdminDashboard() {
           </div>
         </div>
       </div>
+
 
       {/* System Status */}
       <div className="dashboard-card">
