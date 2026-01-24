@@ -1,4 +1,4 @@
-/* Sidebar.css */
+/* Sidebar.css - FIXED */
 
 .sidebar {
   width: 280px;
@@ -235,7 +235,7 @@
   transform: translateX(2px);
 }
 
-/* Role Badge (Optional Enhancement) */
+/* Role Badge */
 .role-badge {
   display: inline-flex;
   align-items: center;
@@ -301,28 +301,4 @@
 /* Smooth scrolling */
 .sidebar-nav {
   scroll-behavior: smooth;
-}
-
-/* Loading state (optional) */
-.sidebar-loading {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-/* Divider (optional) */
-.nav-divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.15);
-  margin: 12px 0;
-}
-
-/* Section Label (optional) */
-.nav-section-label {
-  padding: 8px 16px 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-top: 8px;
 }

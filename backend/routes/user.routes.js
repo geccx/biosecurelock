@@ -1393,11 +1393,11 @@ router.get("/list/teachers", authenticate, async (req, res) => {
 
 router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
   try {
-    console.log("[API] GET /users/tuya/enrolled - Fetching Tuya users");
+    console.log("[API] GET /users/tuya/enrolled - Fetching ALL Tuya users from all unlock methods");
 
     const tuyaService = require("../services/tuya.service");
 
-    // Get device ID from environment variable (same as test script)
+    // Get device ID from environment variable
     const deviceId = process.env.TUYA_DEVICE_ID;
 
     if (!deviceId) {
@@ -1408,32 +1408,34 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
       });
     }
 
-    // Call Tuya API: GET /v1.1/devices/{device_id}/users
-    // Reference: https://developer.tuya.com/en/docs/cloud/doorlock-api-member?id=Kbe2o84on6zgh#title-13-Query%20user%20list%20by%20device%20ID%20(v1.1)
-    // Required parameters: keyword, role, page_no, page_size
-    const keyword = req.query.keyword || "";
-    const role = req.query.role || "";
-    const pageNo = parseInt(req.query.page_no) || 1;
-    const pageSize = parseInt(req.query.page_size) || 50;
+    console.log(`[API] Using device ID: ${deviceId}`);
 
-    const result = await tuyaService.getDeviceUsersById(deviceId, {
-      keyword: keyword,
-      role: role,
-      page_no: pageNo,
-      page_size: pageSize,
+    // ✅ Use getAllDeviceUsers which properly aggregates from all unlock methods
+    const result = await tuyaService.getAllDeviceUsers(deviceId, {
+      page_no: 1,
+      page_size: 100,
     });
 
-    if (!result) {
+    console.log(`[API] getAllDeviceUsers response:`, {
+      success: result?.success,
+      dataLength: result?.data?.length || 0,
+      total: result?.total,
+    });
+
+    if (!result || !result.success) {
+      console.error(
+        "[API] getAllDeviceUsers failed:",
+        result?.error || "Unknown error"
+      );
       return res.status(500).json({
         success: false,
         data: [],
-        error: "Failed to fetch Tuya users - no result returned",
+        error: result?.error || "Failed to fetch Tuya users",
       });
     }
 
-    // The v1.1 API returns result with records array according to documentation
-    const users =
-      result.records || result.list || (Array.isArray(result) ? result : []);
+    const users = result.data || [];
+    console.log(`[API] Successfully fetched ${users.length} Tuya users`);
 
     // Map to include computed unlockMethods for easier frontend consumption
     const mappedUsers = users.map((user) => {
@@ -1455,7 +1457,9 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
 
       return {
         ...user,
+        // Ensure we have a consistent user ID field
         tuyaUserId: user.user_id,
+        // Add computed unlock methods
         unlockMethods,
       };
     });
@@ -1475,12 +1479,12 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
       }
     }
 
+    console.log(`[API] Returning ${mappedUsers.length} users to frontend`);
+
     return res.json({
       success: true,
       data: mappedUsers,
-      total: result.total || mappedUsers.length,
-      page_no: pageNo,
-      page_size: pageSize,
+      total: result.total, // Include total like the service method
     });
   } catch (error) {
     console.error("[API] Error fetching Tuya users:", error);

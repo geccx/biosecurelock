@@ -4,7 +4,7 @@ import { Card } from "../../components/common/Card";
 import { Badge } from "../../components/common/Badge";
 import { Table } from "../../components/common/Table";
 import { logsService } from "../../services";
-
+import "../../styles/AdminAccess.css";
 
 interface LogDisplay {
   id: string;

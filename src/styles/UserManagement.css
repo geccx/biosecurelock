@@ -1,6 +1,5 @@
-/* UserManagement.css - Full Updated with Purple Gradient Theme */
+/* UserManagement.css - FIXED */
 
-/* Main Container */
 .user-management {
   padding: 24px;
   max-width: 1400px;
@@ -347,34 +346,6 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-/* Debug Info Box */
-.user-management .debug-box {
-  margin-top: 24px;
-  padding: 20px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
-  border-radius: 12px;
-  border: 1px solid #e9ecef;
-  text-align: left;
-  font-size: 13px;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.user-management .debug-title {
-  font-weight: 700;
-  margin-bottom: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.user-management .debug-content {
-  color: #4a5568;
-  line-height: 1.6;
 }
 
 /* Responsive Design */

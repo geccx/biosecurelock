@@ -17,7 +17,7 @@ import type { Schedule } from "../../types";
 import { useAlert } from "../../contexts/AlertContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
+import "../../styles/ScheduleManagement.css";
 
 export function ScheduleManagement() {
   const { showAlert } = useAlert();

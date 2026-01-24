@@ -3,6 +3,7 @@ import { Modal } from "../common/Modal";
 import { Button } from "../common/Button";
 import { Input } from "../common/Input";
 import { usersService } from "../../services"
+
 interface SetPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;

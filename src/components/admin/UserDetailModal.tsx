@@ -4,7 +4,7 @@ import { Badge } from "../common/Badge";
 import { Button } from "../common/Button";
 import { usersService, type TuyaUser } from "../../services";
 import { XIcon } from "lucide-react";
-
+import '../../styles/UserModals.css';
 interface UserDetailModalProps {
   isOpen: boolean;
   onClose: () => void;

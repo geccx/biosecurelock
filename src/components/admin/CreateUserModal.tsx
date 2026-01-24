@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Modal } from "../common/Modal";
 import { Button } from "../common/Button";
 import { Input } from "../common/Input";
-
-
+import '../../styles/UserModals.css';
 import { usersService, type CreateUserData } from "../../services";
 
 interface CreateUserModalProps {

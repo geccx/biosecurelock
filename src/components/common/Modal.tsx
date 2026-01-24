@@ -1,7 +1,7 @@
 import React from "react";
 import { XIcon } from "lucide-react";
 
-
+import "./styles/Modal.css";
 
 interface ModalProps {
   isOpen: boolean;

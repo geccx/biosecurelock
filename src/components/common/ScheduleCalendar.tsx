@@ -6,6 +6,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import { labSchedulesService, type LabSchedule } from "../../services";
 import { useAuth } from "../../hooks/useAuth";
 import { Card } from "./Card";
+import "./styles/ScheduleCalendar.css";
 
 const localizer = momentLocalizer(moment);
 
