@@ -1,4 +1,4 @@
-/* LoginPage.css - FIXED */
+/* LoginPage.css - FIXED Icon Overlap Issue */
 
 .login-container {
   min-height: 100vh;
@@ -179,7 +179,7 @@
   color: #2d3748;
 }
 
-/* Input Wrapper */
+/* Input Wrapper - MUST be relative for absolute positioning to work */
 .input-wrapper {
   position: relative;
   width: 100%;
@@ -199,9 +199,10 @@
   z-index: 2;
 }
 
-/* Input Field */
+/* Input Field - CRITICAL: Large left padding to avoid icon */
 .input-field {
   width: 100%;
+  height: auto;
   padding: 14px 16px 14px 48px !important;
   border: 2px solid #e2e8f0;
   border-radius: 12px;
