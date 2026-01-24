@@ -1,11 +1,5 @@
-import React, { useState, useEffect } from "react";
-import {
-  PlusIcon,
-  DownloadIcon,
-  FileTextIcon,
-  FileSpreadsheetIcon,
-  TrashIcon,
-} from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { PlusIcon, DownloadIcon, FileTextIcon, FileSpreadsheetIcon } from "lucide-react";
 import { Card } from "../../components/common/Card";
 import { Button } from "../../components/common/Button";
 import { Badge } from "../../components/common/Badge";
@@ -24,7 +18,6 @@ import type { Schedule } from "../../types";
 import { useAlert } from "../../contexts/AlertContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import "../../styles/ScheduleManagement.css";
 
 export function ScheduleManagement() {
   const { showAlert } = useAlert();
@@ -32,22 +25,8 @@ export function ScheduleManagement() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [laboratories, setLaboratories] = useState<Laboratory[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Modal states
-  const [isModalOpen, setIsModalOpen] = useState(false); // create
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false); // update
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  // Selected schedule
-  const [scheduleToDelete, setScheduleToDelete] = useState<Schedule | null>(
-    null
-  );
-  const [scheduleToUpdate, setScheduleToUpdate] = useState<Schedule | null>(
-    null
-  );
-
-  // Form data
   const [formData, setFormData] = useState({
     labName: "",
     teacherId: "",
@@ -55,8 +34,6 @@ export function ScheduleManagement() {
     endTime: "",
     subject: "",
   });
-
-  // Export states
   const [exportStartDate, setExportStartDate] = useState("");
   const [exportEndDate, setExportEndDate] = useState("");
   const [exportFormat, setExportFormat] = useState<"pdf" | "csv">("pdf");
@@ -104,119 +81,37 @@ export function ScheduleManagement() {
     }
   };
 
-  // -------------------- CREATE --------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const start = new Date(formData.startTime);
-    const end = new Date(formData.endTime);
-
-    if (start >= end) {
-      showAlert("Start time must be before end time.", "error");
-      return;
-    }
-
     try {
       await labSchedulesService.create({
         labName: formData.labName,
         teacherId: parseInt(formData.teacherId),
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
         subject: formData.subject,
       });
 
       setIsModalOpen(false);
-      setFormData({ labName: "", teacherId: "", startTime: "", endTime: "", subject: "" });
+      setFormData({
+        labName: "",
+        teacherId: "",
+        startTime: "",
+        endTime: "",
+        subject: "",
+      });
       fetchData();
-      showAlert("Schedule created successfully!", "success");
     } catch (error) {
       console.error("Failed to create schedule:", error);
       showAlert("Failed to create schedule. Please try again.", "error");
     }
   };
 
-  // -------------------- UPDATE --------------------
-  const handleEditClick = (schedule: Schedule) => {
-    setScheduleToUpdate(schedule);
-    setFormData({
-      labName: schedule.labName,
-      teacherId: schedule.teacherId.toString(),
-      startTime: schedule.startTime.toISOString().slice(0, 16),
-      endTime: schedule.endTime.toISOString().slice(0, 16),
-      subject: schedule.subject || "",
-    });
-    setIsUpdateModalOpen(true);
-  };
-
-  const handleUpdateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!scheduleToUpdate) return;
-
-    const start = new Date(formData.startTime);
-    const end = new Date(formData.endTime);
-
-    if (start >= end) {
-      showAlert("Start time must be before end time.", "error");
-      return;
-    }
-
-    try {
-      const response = await labSchedulesService.update(scheduleToUpdate.id, {
-        labName: formData.labName,
-        teacherId: parseInt(formData.teacherId),
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
-        subject: formData.subject,
-      });
-
-      if (response.success) {
-        showAlert("Schedule updated successfully!", "success");
-        setIsUpdateModalOpen(false);
-        setScheduleToUpdate(null);
-        setFormData({ labName: "", teacherId: "", startTime: "", endTime: "", subject: "" });
-        fetchData();
-      } else {
-        showAlert("Failed to update schedule. Please try again.", "error");
-      }
-    } catch (error) {
-      console.error("Failed to update schedule:", error);
-      showAlert("Failed to update schedule. Please try again.", "error");
-    }
-  };
-
-  // -------------------- DELETE --------------------
-  const handleDeleteClick = (schedule: Schedule) => {
-    setScheduleToDelete(schedule);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!scheduleToDelete) return;
-
-    try {
-      const response = await labSchedulesService.delete(scheduleToDelete.id);
-
-      if (response.success) {
-        showAlert("Schedule deleted successfully!", "success");
-        setIsDeleteModalOpen(false);
-        setScheduleToDelete(null);
-        fetchData();
-      } else {
-        showAlert("Failed to delete schedule. Please try again.", "error");
-      }
-    } catch (error) {
-      console.error("Failed to delete schedule:", error);
-      showAlert("Failed to delete schedule. Please try again.", "error");
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setIsDeleteModalOpen(false);
-    setScheduleToDelete(null);
-  };
-
-  // -------------------- EXPORT --------------------
+  // Filter schedules based on date range for export
   const getFilteredSchedules = (startDate: string, endDate: string) => {
-    if (!startDate && !endDate) return schedules;
+    if (!startDate && !endDate) {
+      return schedules;
+    }
 
     return schedules.filter((schedule) => {
       const scheduleDate = schedule.startTime;
@@ -224,6 +119,7 @@ export function ScheduleManagement() {
       const end = endDate ? new Date(endDate) : null;
 
       if (start && end) {
+        // Set end date to end of day
         end.setHours(23, 59, 59, 999);
         return scheduleDate >= start && scheduleDate <= end;
       } else if (start) {
@@ -232,287 +128,223 @@ export function ScheduleManagement() {
         end.setHours(23, 59, 59, 999);
         return scheduleDate <= end;
       }
+
       return true;
     });
   };
 
   const handleExport = () => {
     const filteredSchedules = getFilteredSchedules(exportStartDate, exportEndDate);
-
+    
     if (filteredSchedules.length === 0) {
       showAlert("No schedules to export. Please adjust your date filter.", "warning");
       return;
     }
 
-    if (exportFormat === "pdf") handleExportPDF(filteredSchedules);
-    else handleExportCSV(filteredSchedules);
+    if (exportFormat === "pdf") {
+      handleExportPDF(filteredSchedules);
+    } else {
+      handleExportCSV(filteredSchedules);
+    }
 
+    // Close modal after export
     setIsExportModalOpen(false);
     setExportStartDate("");
     setExportEndDate("");
   };
 
   const handleExportPDF = (schedulesToExport: Schedule[]) => {
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("Schedule Report", 14, 22);
+    try {
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(18);
+      doc.text("Schedule Report", 14, 22);
+      
+      // Add date range info
+      doc.setFontSize(10);
+      const dateRangeText = exportStartDate || exportEndDate
+        ? `Date Range: ${exportStartDate || "All"} to ${exportEndDate || "All"}`
+        : "Date Range: All schedules";
+      doc.text(dateRangeText, 14, 30);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
+      doc.text(`Total Schedules: ${schedulesToExport.length}`, 14, 42);
 
-    doc.setFontSize(10);
-    const dateRangeText = exportStartDate || exportEndDate
-      ? `Date Range: ${exportStartDate || "All"} to ${exportEndDate || "All"}`
-      : "Date Range: All schedules";
-    doc.text(dateRangeText, 14, 30);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
-    doc.text(`Total Schedules: ${schedulesToExport.length}`, 14, 42);
+      // Prepare table data
+      const tableData = schedulesToExport.map((schedule) => [
+        schedule.labName,
+        schedule.subject || "N/A",
+        schedule.startTime.toLocaleDateString(),
+        schedule.startTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }) +
+          " - " +
+          schedule.endTime.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        schedule.teacherName || "N/A",
+        schedule.status,
+      ]);
 
-    const tableData = schedulesToExport.map((schedule) => [
-      schedule.labName,
-      schedule.subject || "N/A",
-      schedule.startTime.toLocaleDateString(),
-      schedule.startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
-        " - " +
-        schedule.endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      schedule.teacherName || "N/A",
-      schedule.status,
-    ]);
+      // Add table
+      autoTable(doc, {
+        startY: 48,
+        head: [["Laboratory", "Subject", "Date", "Time", "Teacher", "Status"]],
+        body: tableData,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [59, 130, 246] }, // blue-500
+        alternateRowStyles: { fillColor: [249, 250, 251] },
+      });
 
-    autoTable(doc, {
-      startY: 48,
-      head: [["Laboratory", "Subject", "Date", "Time", "Teacher", "Status"]],
-      body: tableData,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [147, 51, 234] },
-      alternateRowStyles: { fillColor: [250, 245, 255] },
-    });
-
-    const fileName = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.pdf`;
-    doc.save(fileName);
-    showAlert("PDF exported successfully!", "success");
+      // Save PDF
+      const fileName = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.pdf`;
+      doc.save(fileName);
+      showAlert("PDF exported successfully!", "success");
+    } catch (error) {
+      console.error("Failed to export PDF:", error);
+      showAlert("Failed to export PDF. Please try again.", "error");
+    }
   };
 
   const handleExportCSV = (schedulesToExport: Schedule[]) => {
-    const headers = ["Laboratory Name", "Subject", "Date", "Start Time", "End Time", "Teacher", "Status"];
-    const rows = schedulesToExport.map((schedule) => [
-      schedule.labName,
-      schedule.subject || "N/A",
-      schedule.startTime.toLocaleDateString(),
-      schedule.startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      schedule.endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      schedule.teacherName || "N/A",
-      schedule.status,
-    ]);
+    try {
+      // CSV headers
+      const headers = [
+        "Laboratory Name",
+        "Subject",
+        "Date",
+        "Start Time",
+        "End Time",
+        "Teacher",
+        "Status",
+      ];
 
-    const csvContent = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
+      // CSV rows
+      const rows = schedulesToExport.map((schedule) => [
+        schedule.labName,
+        schedule.subject || "N/A",
+        schedule.startTime.toLocaleDateString(),
+        schedule.startTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        schedule.endTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        schedule.teacherName || "N/A",
+        schedule.status,
+      ]);
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+      // Combine headers and rows
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${cell}"`).join(","))
+        .join("\n");
 
-    showAlert("CSV exported successfully!", "success");
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      showAlert("CSV exported successfully!", "success");
+    } catch (error) {
+      console.error("Failed to export CSV:", error);
+      showAlert("Failed to export CSV. Please try again.", "error");
+    }
   };
 
-  // -------------------- TABLE COLUMNS --------------------
   const columns = [
-    { header: "Laboratory Name", accessor: "labName" as keyof Schedule },
-    { header: "Subject", accessor: (s: Schedule) => s.subject || "N/A" },
+    {
+      header: "Laboratory Name",
+      accessor: "labName" as keyof Schedule,
+    },
+    {
+      header: "Subject",
+      accessor: (schedule: Schedule) => schedule.subject || "N/A",
+    },
     {
       header: "Time of Access",
-      accessor: (s: Schedule) => {
-        const startTime = s.startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const endTime = s.endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const date = s.startTime.toLocaleDateString();
+      accessor: (schedule: Schedule) => {
+        const startTime = schedule.startTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const endTime = schedule.endTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const date = schedule.startTime.toLocaleDateString();
         return `${date} ${startTime} - ${endTime}`;
       },
     },
-    { header: "Teacher", accessor: (s: Schedule) => s.teacherName || "N/A" },
+    {
+      header: "Teacher",
+      accessor: (schedule: Schedule) => schedule.teacherName || "N/A",
+    },
     {
       header: "Status",
-      accessor: (s: Schedule) => (
+      accessor: (schedule: Schedule) => (
         <Badge
           variant={
-            s.status === "pending"
+            schedule.status === "pending"
               ? "warning"
-              : s.status === "scheduled"
+              : schedule.status === "scheduled"
               ? "info"
-              : s.status === "completed"
+              : schedule.status === "completed"
               ? "success"
               : "danger"
           }
         >
-          {s.status}
+          {schedule.status}
         </Badge>
-      ),
-    },
-    {
-      header: "Actions",
-      accessor: (s: Schedule) => (
-        <div className="actions-buttons">
-          <Button onClick={() => handleEditClick(s)} variant="secondary" size="sm">Edit</Button>
-          <Button onClick={() => handleDeleteClick(s)} variant="danger" size="sm">
-            <TrashIcon className="icon-sm" /> Delete
-          </Button>
-        </div>
       ),
     },
   ];
 
   if (loading) {
     return (
-      <div className="schedule-loading-container">
-        <div className="schedule-spinner"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="schedule-management-container">
+    <div className="space-y-6">
       <Card
         title="Schedule Management"
         action={
-          <div className="card-actions">
-            <Button onClick={() => setIsExportModalOpen(true)} variant="secondary" size="sm" disabled={schedules.length === 0}>
-              <DownloadIcon className="icon-sm" /> Export Schedules
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setIsExportModalOpen(true)}
+              variant="secondary"
+              size="sm"
+              disabled={schedules.length === 0}
+            >
+              <DownloadIcon className="w-4 h-4 mr-2" />
+              Export Schedules
             </Button>
             <Button onClick={() => setIsModalOpen(true)} size="sm">
-              <PlusIcon className="icon-sm" /> Create Schedule
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Create Schedule
             </Button>
           </div>
         }
       >
-        {schedules.length > 0 ? <Table data={schedules} columns={columns} /> : <p className="schedule-empty-state">No schedules found</p>}
+        {schedules.length > 0 ? (
+          <Table data={schedules} columns={columns} />
+        ) : (
+          <p className="text-center text-gray-500 py-8">No schedules found</p>
+        )}
       </Card>
-
-      {/* Create, Update, Delete, Export Modals */}
-      {/* Create Schedule Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Schedule">
-        <form onSubmit={handleSubmit} className="modal-form">
-          {/* Form fields same as previous code */}
-          <div className="form-field">
-            <label className="form-field-label">Laboratory Name *</label>
-            <select
-              value={formData.labName}
-              onChange={(e) => setFormData({ ...formData, labName: e.target.value })}
-              className="form-select"
-              required
-            >
-              <option value="">Select a laboratory</option>
-              {laboratories.map((lab) => <option key={lab.id} value={lab.name}>{lab.name}</option>)}
-            </select>
-          </div>
-          <div className="form-field">
-            <label className="form-field-label">Teacher</label>
-            <select
-              value={formData.teacherId}
-              onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })}
-              className="form-select"
-              required
-            >
-              <option value="">Select a teacher</option>
-              {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
-            </select>
-          </div>
-          <Input label="Subject" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} placeholder="Data Structures" />
-          <div className="modal-grid-2">
-            <Input label="Start Time" type="datetime-local" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} required />
-            <Input label="End Time" type="datetime-local" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} required />
-          </div>
-          <div className="modal-actions">
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit">Create Schedule</Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Update Schedule Modal */}
-      <Modal isOpen={isUpdateModalOpen} onClose={() => setIsUpdateModalOpen(false)} title="Update Schedule">
-        <form onSubmit={handleUpdateSubmit} className="modal-form">
-          <div className="form-field">
-            <label className="form-field-label">Laboratory Name *</label>
-            <select
-              value={formData.labName}
-              onChange={(e) => setFormData({ ...formData, labName: e.target.value })}
-              className="form-select"
-              required
-            >
-              <option value="">Select a laboratory</option>
-              {laboratories.map((lab) => <option key={lab.id} value={lab.name}>{lab.name}</option>)}
-            </select>
-          </div>
-          <div className="form-field">
-            <label className="form-field-label">Teacher</label>
-            <select
-              value={formData.teacherId}
-              onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })}
-              className="form-select"
-              required
-            >
-              <option value="">Select a teacher</option>
-              {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
-            </select>
-          </div>
-          <Input label="Subject" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} placeholder="Data Structures" />
-          <div className="modal-grid-2">
-            <Input label="Start Time" type="datetime-local" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} required />
-            <Input label="End Time" type="datetime-local" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} required />
-          </div>
-          <div className="modal-actions">
-            <Button type="button" variant="secondary" onClick={() => setIsUpdateModalOpen(false)}>Cancel</Button>
-            <Button type="submit">Update Schedule</Button>
-          </div>
-        </form>
-      </Modal>
-
-       {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={handleDeleteCancel}
-        title="Delete Schedule"
-      >
-        <div className="modal-form">
-          <p className="modal-description">
-            Are you sure you want to delete this schedule? This action cannot be undone.
-          </p>
-          
-          {scheduleToDelete && (
-            <div className="delete-schedule-details">
-              <p><strong>Laboratory:</strong> {scheduleToDelete.labName}</p>
-              <p><strong>Subject:</strong> {scheduleToDelete.subject || "N/A"}</p>
-              <p><strong>Teacher:</strong> {scheduleToDelete.teacherName || "N/A"}</p>
-              <p><strong>Date:</strong> {scheduleToDelete.startTime.toLocaleDateString()}</p>
-              <p><strong>Time:</strong> {scheduleToDelete.startTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })} - {scheduleToDelete.endTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}</p>
-            </div>
-          )}
-
-          <div className="modal-actions">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleDeleteCancel}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              onClick={handleDeleteConfirm}
-            >
-              Delete Schedule
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Export Modal */}
       <Modal
@@ -524,42 +356,50 @@ export function ScheduleManagement() {
         }}
         title="Export Schedules"
       >
-        <div className="modal-form">
-          <p className="modal-description">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
             Select a date range and export format to export schedules.
           </p>
 
           {/* Export Format Selection */}
-          <div className="export-format-container">
-            <label className="export-format-label">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Export Format
             </label>
-            <div className="export-format-buttons">
+            <div className="flex gap-4">
               <button
                 onClick={() => setExportFormat("pdf")}
-                className={`export-format-button ${exportFormat === "pdf" ? "active" : ""}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                  exportFormat === "pdf"
+                    ? "bg-blue-50 border-blue-500 text-blue-700"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
               >
-                <FileTextIcon className="export-format-icon" />
+                <FileTextIcon className="w-5 h-5" />
                 PDF
               </button>
               <button
                 onClick={() => setExportFormat("csv")}
-                className={`export-format-button ${exportFormat === "csv" ? "active" : ""}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                  exportFormat === "csv"
+                    ? "bg-blue-50 border-blue-500 text-blue-700"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
               >
-                <FileSpreadsheetIcon className="export-format-icon" />
+                <FileSpreadsheetIcon className="w-5 h-5" />
                 CSV
               </button>
             </div>
           </div>
 
           {/* Date Filter */}
-          <div className="date-filter-container">
-            <label className="date-filter-label">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Date Range (Optional)
             </label>
-            <div className="date-filter-grid">
-              <div className="date-input-wrapper">
-                <label className="date-input-label">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">
                   Start Date
                 </label>
                 <Input
@@ -569,8 +409,8 @@ export function ScheduleManagement() {
                   placeholder="Select start date"
                 />
               </div>
-              <div className="date-input-wrapper">
-                <label className="date-input-label">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">
                   End Date
                 </label>
                 <Input
@@ -582,7 +422,7 @@ export function ScheduleManagement() {
               </div>
             </div>
             {(exportStartDate || exportEndDate) && (
-              <p className="date-filter-info">
+              <p className="text-xs text-gray-600 mt-2">
                 {(() => {
                   const filtered = getFilteredSchedules(exportStartDate, exportEndDate);
                   return `Will export ${filtered.length} of ${schedules.length} schedules`;
@@ -591,7 +431,7 @@ export function ScheduleManagement() {
             )}
           </div>
 
-          <div className="modal-actions">
+          <div className="flex justify-end space-x-3 pt-4">
             <Button
               type="button"
               variant="secondary"
@@ -616,17 +456,17 @@ export function ScheduleManagement() {
         onClose={() => setIsModalOpen(false)}
         title="Create New Schedule"
       >
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-field">
-            <label className="form-field-label">
-              Laboratory Name <span className="form-field-required">*</span>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Laboratory Name <span className="text-red-500">*</span>
             </label>
             <select
               value={formData.labName}
               onChange={(e) =>
                 setFormData({ ...formData, labName: e.target.value })
               }
-              className="form-select"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
               <option value="">Select a laboratory</option>
@@ -638,8 +478,8 @@ export function ScheduleManagement() {
             </select>
           </div>
 
-          <div className="form-field">
-            <label className="form-field-label">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Teacher
             </label>
             <select
@@ -647,7 +487,7 @@ export function ScheduleManagement() {
               onChange={(e) =>
                 setFormData({ ...formData, teacherId: e.target.value })
               }
-              className="form-select"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
               <option value="">Select a teacher</option>
@@ -668,7 +508,7 @@ export function ScheduleManagement() {
             placeholder="Data Structures"
           />
 
-          <div className="modal-grid-2">
+          <div className="grid grid-cols-2 gap-4">
             <Input
               label="Start Time"
               type="datetime-local"
@@ -689,7 +529,7 @@ export function ScheduleManagement() {
             />
           </div>
 
-          <div className="modal-actions">
+          <div className="flex justify-end space-x-3 pt-4">
             <Button
               type="button"
               variant="secondary"
@@ -704,5 +544,3 @@ export function ScheduleManagement() {
     </div>
   );
 }
-
-     
