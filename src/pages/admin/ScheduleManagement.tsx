@@ -20,16 +20,6 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "../../styles/ScheduleManagement.css";
 
-const DAYS_OF_WEEK = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday"
-];
-
 export function ScheduleManagement() {
   const { showAlert } = useAlert();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -40,18 +30,13 @@ export function ScheduleManagement() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<Schedule | null>(null);
-  
   const [formData, setFormData] = useState({
     labName: "",
     teacherId: "",
     startTime: "",
     endTime: "",
     subject: "",
-    recurrenceType: "weekly" as "one-time" | "weekly",
-    daysOfWeek: [] as string[],
-    recurrenceEndDate: "",
   });
-  
   const [exportStartDate, setExportStartDate] = useState("");
   const [exportEndDate, setExportEndDate] = useState("");
   const [exportFormat, setExportFormat] = useState<"pdf" | "csv">("pdf");
@@ -70,18 +55,15 @@ export function ScheduleManagement() {
 
       if (schedulesRes.success && schedulesRes.data) {
         setSchedules(
-          schedulesRes.data.map((s: any) => ({
+          schedulesRes.data.map((s) => ({
             id: s.id,
             labName: s.labName,
             teacherId: s.teacherId,
             teacherName: s.teacherName,
-            startTime: s.recurrenceType === "weekly" ? s.startTime : new Date(s.startTime),
-            endTime: s.recurrenceType === "weekly" ? s.endTime : new Date(s.endTime),
+            startTime: new Date(s.startTime),
+            endTime: new Date(s.endTime),
             subject: s.subject,
             status: s.status,
-            recurrenceType: s.recurrenceType || "one-time",
-            daysOfWeek: s.daysOfWeek || [],
-            recurrenceEndDate: s.recurrenceEndDate,
             createdBy: s.createdBy || "",
             createdAt: new Date(s.createdAt),
           }))
@@ -102,74 +84,40 @@ export function ScheduleManagement() {
     }
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await labSchedulesService.create({
+        labName: formData.labName,
+        teacherId: parseInt(formData.teacherId),
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
+        subject: formData.subject,
+      });
 
-  // Validation for weekly schedules
-  if (formData.recurrenceType === "weekly" && formData.daysOfWeek.length === 0) {
-    showAlert("Please select at least one day of the week for weekly schedules", "error");
-    return;
-  }
-
-  try {
-    const submitData: any = {
-      labName: formData.labName,
-      teacherId: parseInt(formData.teacherId),
-      subject: formData.subject,
-      recurrenceType: formData.recurrenceType,
-    };
-
-    if (formData.recurrenceType === "weekly") {
-      // For weekly schedules, send just time (HH:MM)
-      submitData.startTime = formData.startTime; // Should be "14:00" format
-      submitData.endTime = formData.endTime;     // Should be "16:00" format
-      submitData.daysOfWeek = formData.daysOfWeek; // Should be ["Tuesday", "Thursday"]
-      submitData.recurrenceEndDate = formData.recurrenceEndDate || null;
-    } else {
-      // For one-time schedules, send full datetime ISO string
-      submitData.startTime = new Date(formData.startTime).toISOString();
-      submitData.endTime = new Date(formData.endTime).toISOString();
-      submitData.daysOfWeek = [];
-      submitData.recurrenceEndDate = null;
+      setIsModalOpen(false);
+      setFormData({
+        labName: "",
+        teacherId: "",
+        startTime: "",
+        endTime: "",
+        subject: "",
+      });
+      fetchData();
+      showAlert("Schedule created successfully!", "success");
+    } catch (error) {
+      console.error("Failed to create schedule:", error);
+      showAlert("Failed to create schedule. Please try again.", "error");
     }
-
-    console.log("Submitting schedule data:", submitData); // Debug log
-
-    await labSchedulesService.create(submitData);
-
-    setIsModalOpen(false);
-    setFormData({
-      labName: "",
-      teacherId: "",
-      startTime: "",
-      endTime: "",
-      subject: "",
-      recurrenceType: "weekly",
-      daysOfWeek: [],
-      recurrenceEndDate: "",
-    });
-    fetchData();
-    showAlert("Schedule created successfully!", "success");
-  } catch (error) {
-    console.error("Failed to create schedule:", error);
-    showAlert("Failed to create schedule. Please try again.", "error");
-  }
-};
-
-  const toggleDayOfWeek = (day: string) => {
-    setFormData(prev => ({
-      ...prev,
-      daysOfWeek: prev.daysOfWeek.includes(day)
-        ? prev.daysOfWeek.filter(d => d !== day)
-        : [...prev.daysOfWeek, day]
-    }));
   };
 
+  // Open delete confirmation modal
   const handleDeleteClick = (schedule: Schedule) => {
     setScheduleToDelete(schedule);
     setIsDeleteModalOpen(true);
   };
 
+  // Confirm and delete schedule
   const handleDeleteConfirm = async () => {
     if (!scheduleToDelete) return;
 
@@ -190,35 +138,25 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
   };
 
+  // Cancel delete
   const handleDeleteCancel = () => {
     setIsDeleteModalOpen(false);
     setScheduleToDelete(null);
   };
 
+  // Filter schedules based on date range for export
   const getFilteredSchedules = (startDate: string, endDate: string) => {
     if (!startDate && !endDate) {
       return schedules;
     }
 
     return schedules.filter((schedule) => {
-      // For weekly schedules, include all since they're recurring
-      if (schedule.recurrenceType === "weekly") {
-        if (schedule.recurrenceEndDate) {
-          const endDateObj = new Date(schedule.recurrenceEndDate);
-          const filterStart = startDate ? new Date(startDate) : null;
-          if (filterStart && endDateObj < filterStart) {
-            return false;
-          }
-        }
-        return true;
-      }
-
-      // For one-time schedules, filter by date
-      const scheduleDate = schedule.startTime as Date;
+      const scheduleDate = schedule.startTime;
       const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate) : null;
 
       if (start && end) {
+        // Set end date to end of day
         end.setHours(23, 59, 59, 999);
         return scheduleDate >= start && scheduleDate <= end;
       } else if (start) {
@@ -246,6 +184,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       handleExportCSV(filteredSchedules);
     }
 
+    // Close modal after export
     setIsExportModalOpen(false);
     setExportStartDate("");
     setExportEndDate("");
@@ -255,9 +194,11 @@ const handleSubmit = async (e: React.FormEvent) => {
     try {
       const doc = new jsPDF();
       
+      // Add title
       doc.setFontSize(18);
       doc.text("Schedule Report", 14, 22);
       
+      // Add date range info
       doc.setFontSize(10);
       const dateRangeText = exportStartDate || exportEndDate
         ? `Date Range: ${exportStartDate || "All"} to ${exportEndDate || "All"}`
@@ -266,39 +207,35 @@ const handleSubmit = async (e: React.FormEvent) => {
       doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
       doc.text(`Total Schedules: ${schedulesToExport.length}`, 14, 42);
 
-      const tableData = schedulesToExport.map((schedule) => {
-        if (schedule.recurrenceType === "weekly") {
-          return [
-            schedule.labName,
-            schedule.subject || "N/A",
-            schedule.daysOfWeek?.join(", ") || "N/A",
-            `${schedule.startTime} - ${schedule.endTime}`,
-            schedule.teacherName || "N/A",
-            "Weekly",
-          ];
-        } else {
-          return [
-            schedule.labName,
-            schedule.subject || "N/A",
-            (schedule.startTime as Date).toLocaleDateString(),
-            (schedule.startTime as Date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
-              " - " +
-              (schedule.endTime as Date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            schedule.teacherName || "N/A",
-            "One-time",
-          ];
-        }
-      });
+      // Prepare table data
+      const tableData = schedulesToExport.map((schedule) => [
+        schedule.labName,
+        schedule.subject || "N/A",
+        schedule.startTime.toLocaleDateString(),
+        schedule.startTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }) +
+          " - " +
+          schedule.endTime.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        schedule.teacherName || "N/A",
+        schedule.status,
+      ]);
 
+      // Add table with purple theme
       autoTable(doc, {
         startY: 48,
-        head: [["Laboratory", "Subject", "Days/Date", "Time", "Teacher", "Type"]],
+        head: [["Laboratory", "Subject", "Date", "Time", "Teacher", "Status"]],
         body: tableData,
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [147, 51, 234] },
-        alternateRowStyles: { fillColor: [250, 245, 255] },
+        headStyles: { fillColor: [147, 51, 234] }, // Purple theme
+        alternateRowStyles: { fillColor: [250, 245, 255] }, // Light purple
       });
 
+      // Save PDF
       const fileName = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.pdf`;
       doc.save(fileName);
       showAlert("PDF exported successfully!", "success");
@@ -310,44 +247,40 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   const handleExportCSV = (schedulesToExport: Schedule[]) => {
     try {
+      // CSV headers
       const headers = [
         "Laboratory Name",
         "Subject",
-        "Days/Date",
+        "Date",
         "Start Time",
         "End Time",
         "Teacher",
-        "Type",
+        "Status",
       ];
 
-      const rows = schedulesToExport.map((schedule) => {
-        if (schedule.recurrenceType === "weekly") {
-          return [
-            schedule.labName,
-            schedule.subject || "N/A",
-            schedule.daysOfWeek?.join(", ") || "N/A",
-            schedule.startTime,
-            schedule.endTime,
-            schedule.teacherName || "N/A",
-            "Weekly",
-          ];
-        } else {
-          return [
-            schedule.labName,
-            schedule.subject || "N/A",
-            (schedule.startTime as Date).toLocaleDateString(),
-            (schedule.startTime as Date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            (schedule.endTime as Date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            schedule.teacherName || "N/A",
-            "One-time",
-          ];
-        }
-      });
+      // CSV rows
+      const rows = schedulesToExport.map((schedule) => [
+        schedule.labName,
+        schedule.subject || "N/A",
+        schedule.startTime.toLocaleDateString(),
+        schedule.startTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        schedule.endTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        schedule.teacherName || "N/A",
+        schedule.status,
+      ]);
 
+      // Combine headers and rows
       const csvContent = [headers, ...rows]
         .map((row) => row.map((cell) => `"${cell}"`).join(","))
         .join("\n");
 
+      // Create blob and download
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -375,47 +308,23 @@ const handleSubmit = async (e: React.FormEvent) => {
       accessor: (schedule: Schedule) => schedule.subject || "N/A",
     },
     {
-      header: "Schedule",
+      header: "Time of Access",
       accessor: (schedule: Schedule) => {
-        if (schedule.recurrenceType === "weekly") {
-          return (
-            <div>
-              <div className="font-semibold">{schedule.daysOfWeek?.join(", ")}</div>
-              <div className="text-sm text-gray-600">
-                {schedule.startTime} - {schedule.endTime}
-              </div>
-              {schedule.recurrenceEndDate && (
-                <div className="text-xs text-gray-500">
-                  Until: {new Date(schedule.recurrenceEndDate).toLocaleDateString()}
-                </div>
-              )}
-            </div>
-          );
-        } else {
-          const startTime = (schedule.startTime as Date).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          const endTime = (schedule.endTime as Date).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          const date = (schedule.startTime as Date).toLocaleDateString();
-          return `${date} ${startTime} - ${endTime}`;
-        }
+        const startTime = schedule.startTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const endTime = schedule.endTime.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const date = schedule.startTime.toLocaleDateString();
+        return `${date} ${startTime} - ${endTime}`;
       },
     },
     {
       header: "Teacher",
       accessor: (schedule: Schedule) => schedule.teacherName || "N/A",
-    },
-    {
-      header: "Type",
-      accessor: (schedule: Schedule) => (
-        <Badge variant={schedule.recurrenceType === "weekly" ? "info" : "secondary"}>
-          {schedule.recurrenceType === "weekly" ? "Weekly" : "One-time"}
-        </Badge>
-      ),
     },
     {
       header: "Status",
@@ -503,26 +412,14 @@ const handleSubmit = async (e: React.FormEvent) => {
               <p><strong>Laboratory:</strong> {scheduleToDelete.labName}</p>
               <p><strong>Subject:</strong> {scheduleToDelete.subject || "N/A"}</p>
               <p><strong>Teacher:</strong> {scheduleToDelete.teacherName || "N/A"}</p>
-              {scheduleToDelete.recurrenceType === "weekly" ? (
-                <>
-                  <p><strong>Days:</strong> {scheduleToDelete.daysOfWeek?.join(", ")}</p>
-                  <p><strong>Time:</strong> {scheduleToDelete.startTime} - {scheduleToDelete.endTime}</p>
-                  {scheduleToDelete.recurrenceEndDate && (
-                    <p><strong>Ends:</strong> {new Date(scheduleToDelete.recurrenceEndDate).toLocaleDateString()}</p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p><strong>Date:</strong> {(scheduleToDelete.startTime as Date).toLocaleDateString()}</p>
-                  <p><strong>Time:</strong> {(scheduleToDelete.startTime as Date).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })} - {(scheduleToDelete.endTime as Date).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}</p>
-                </>
-              )}
+              <p><strong>Date:</strong> {scheduleToDelete.startTime.toLocaleDateString()}</p>
+              <p><strong>Time:</strong> {scheduleToDelete.startTime.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })} - {scheduleToDelete.endTime.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}</p>
             </div>
           )}
 
@@ -560,6 +457,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             Select a date range and export format to export schedules.
           </p>
 
+          {/* Export Format Selection */}
           <div className="export-format-container">
             <label className="export-format-label">
               Export Format
@@ -582,13 +480,16 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
           </div>
 
+          {/* Date Filter */}
           <div className="date-filter-container">
             <label className="date-filter-label">
               Date Range (Optional)
             </label>
             <div className="date-filter-grid">
               <div className="date-input-wrapper">
-                <label className="date-input-label">Start Date</label>
+                <label className="date-input-label">
+                  Start Date
+                </label>
                 <Input
                   type="date"
                   value={exportStartDate}
@@ -597,7 +498,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                 />
               </div>
               <div className="date-input-wrapper">
-                <label className="date-input-label">End Date</label>
+                <label className="date-input-label">
+                  End Date
+                </label>
                 <Input
                   type="date"
                   value={exportEndDate}
@@ -665,7 +568,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           <div className="form-field">
             <label className="form-field-label">
-              Teacher <span className="form-field-required">*</span>
+              Teacher
             </label>
             <select
               value={formData.teacherId}
@@ -693,57 +596,10 @@ const handleSubmit = async (e: React.FormEvent) => {
             placeholder="Data Structures"
           />
 
-          <div className="form-field">
-            <label className="form-field-label">
-              Schedule Type <span className="form-field-required">*</span>
-            </label>
-            <div className="schedule-type-buttons">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, recurrenceType: "weekly", daysOfWeek: [] })}
-                className={`schedule-type-button ${formData.recurrenceType === "weekly" ? "active" : ""}`}
-              >
-                Weekly Recurring
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, recurrenceType: "one-time", daysOfWeek: [], recurrenceEndDate: "" })}
-                className={`schedule-type-button ${formData.recurrenceType === "one-time" ? "active" : ""}`}
-              >
-                One-Time
-              </button>
-            </div>
-          </div>
-
-          {formData.recurrenceType === "weekly" && (
-            <div className="form-field">
-              <label className="form-field-label">
-                Days of Week <span className="form-field-required">*</span>
-              </label>
-              <div className="days-of-week-grid">
-                {DAYS_OF_WEEK.map(day => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => toggleDayOfWeek(day)}
-                    className={`day-button ${formData.daysOfWeek.includes(day) ? "selected" : ""}`}
-                  >
-                    {day.slice(0, 3)}
-                  </button>
-                ))}
-              </div>
-              {formData.daysOfWeek.length > 0 && (
-                <p className="selected-days-text">
-                  Selected: {formData.daysOfWeek.join(", ")}
-                </p>
-              )}
-            </div>
-          )}
-
           <div className="modal-grid-2">
             <Input
               label="Start Time"
-              type={formData.recurrenceType === "weekly" ? "time" : "datetime-local"}
+              type="datetime-local"
               value={formData.startTime}
               onChange={(e) =>
                 setFormData({ ...formData, startTime: e.target.value })
@@ -752,7 +608,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             />
             <Input
               label="End Time"
-              type={formData.recurrenceType === "weekly" ? "time" : "datetime-local"}
+              type="datetime-local"
               value={formData.endTime}
               onChange={(e) =>
                 setFormData({ ...formData, endTime: e.target.value })
@@ -760,18 +616,6 @@ const handleSubmit = async (e: React.FormEvent) => {
               required
             />
           </div>
-
-          {formData.recurrenceType === "weekly" && (
-            <Input
-              label="Schedule Ends On (Optional)"
-              type="date"
-              value={formData.recurrenceEndDate}
-              onChange={(e) =>
-                setFormData({ ...formData, recurrenceEndDate: e.target.value })
-              }
-              placeholder="Leave empty for ongoing schedule"
-            />
-          )}
 
           <div className="modal-actions">
             <Button
