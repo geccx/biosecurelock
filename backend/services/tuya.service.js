@@ -2123,6 +2123,7 @@ class TuyaService {
     return this.getDeviceUsersById(deviceId, params);
   }
 
+  
   /**
    * Get device users with device ID parameter
    * Reference: https://developer.tuya.com/en/docs/cloud/doorlock-api-member?id=Kbe2o84on6zgh#title-13-Query%20user%20list%20by%20device%20ID%20(v1.1)
