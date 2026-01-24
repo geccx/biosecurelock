@@ -1393,7 +1393,7 @@ router.get("/list/teachers", authenticate, async (req, res) => {
 
 router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
   try {
-    console.log("[API] GET /users/tuya/enrolled - Fetching ALL Tuya users");
+    console.log("[API] GET /users/tuya/enrolled - Fetching ALL Tuya users using getAllDeviceUsers");
 
     const tuyaService = require("../services/tuya.service");
     const deviceId = process.env.TUYA_DEVICE_ID;
@@ -1406,64 +1406,26 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
       });
     }
 
-    // ✅ FIX: Fetch ALL users by using empty filters and large page size
-    const keyword = ""; // Don't filter by keyword
-    const role = "";     // Don't filter by role
-    const pageSize = 100; // Increase page size to get all users
+    // ✅ SOLUTION: Use getAllDeviceUsers() method that aggregates from all unlock methods
+    const result = await tuyaService.getAllDeviceUsers(deviceId, {
+      page_no: 1,
+      page_size: 100,
+    });
 
-    // Fetch first page
-    let allUsers = [];
-    let currentPage = 1;
-    let hasMorePages = true;
-
-    // ✅ FIX: Loop through all pages to get ALL users
-    while (hasMorePages && currentPage <= 10) { // Safety limit: max 10 pages
-      console.log(`[API] Fetching page ${currentPage}...`);
-      
-      const result = await tuyaService.getDeviceUsersById(deviceId, {
-        keyword: keyword,
-        role: role,
-        page_no: currentPage,
-        page_size: pageSize,
+    if (!result || !result.success) {
+      console.error("[API] getAllDeviceUsers failed:", result?.error);
+      return res.status(500).json({
+        success: false,
+        data: [],
+        error: result?.error || "Failed to fetch Tuya users",
       });
-
-      if (!result) {
-        console.error("[API] No result returned from Tuya API");
-        break;
-      }
-
-      // ✅ FIX: Try multiple possible response formats
-      const users = 
-        result.records ||           // v1.1 API format
-        result.list ||              // Alternative format
-        result.result?.records ||   // Nested format
-        result.result?.list ||      // Nested alternative
-        (Array.isArray(result) ? result : []); // Array format
-
-      console.log(`[API] Page ${currentPage}: Found ${users.length} users`);
-      
-      if (users.length === 0) {
-        hasMorePages = false;
-        break;
-      }
-
-      allUsers = allUsers.concat(users);
-
-      // Check if there are more pages
-      const total = result.total || result.result?.total || 0;
-      const hasMore = (currentPage * pageSize) < total;
-      
-      if (!hasMore || users.length < pageSize) {
-        hasMorePages = false;
-      } else {
-        currentPage++;
-      }
     }
 
-    console.log(`[API] Total users fetched: ${allUsers.length}`);
+    const users = result.data || [];
+    console.log(`[API] Total users fetched from getAllDeviceUsers: ${users.length}`);
 
-    // Map to include computed unlockMethods
-    const mappedUsers = allUsers.map((user) => {
+    // Map to include computed unlockMethods for easier frontend consumption
+    const mappedUsers = users.map((user) => {
       const unlockMethods = [];
 
       if (user.unlock_detail && Array.isArray(user.unlock_detail)) {
@@ -1501,6 +1463,8 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
         }
       }
     }
+
+    console.log(`[API] Returning ${mappedUsers.length} users to frontend`);
 
     return res.json({
       success: true,
