@@ -978,16 +978,7 @@ export function UserManagement() {
                               <EyeIcon className="w-4 h-4" />
                               View
                             </Button>
-                            <Button
-                              onClick={() => handleEditUser(tuyaUser)}
-                              size="sm"
-                              variant="ghost"
-                              disabled={deletingUserId === tuyaUser.user_id}
-                              className="flex items-center gap-2"
-                            >
-                              <EditIcon className="w-4 h-4" />
-                              Edit
-                            </Button>
+                          
                             <Button
                               onClick={() => handleDeleteTuyaUser(tuyaUser)}
                               size="sm"

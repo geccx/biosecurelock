@@ -460,13 +460,6 @@ export function SystemConfig() {
                         </>
                       )}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleRefreshDeviceStatus(device)}
-                    >
-                      Refresh
-                    </Button>
                   </div>
                 </div>
               );
