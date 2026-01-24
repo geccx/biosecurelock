@@ -81,31 +81,42 @@ export function ScheduleManagement() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await labSchedulesService.create({
-        labName: formData.labName,
-        teacherId: parseInt(formData.teacherId),
-        startTime: new Date(formData.startTime).toISOString(),
-        endTime: new Date(formData.endTime).toISOString(),
-        subject: formData.subject,
-      });
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-      setIsModalOpen(false);
-      setFormData({
-        labName: "",
-        teacherId: "",
-        startTime: "",
-        endTime: "",
-        subject: "",
-      });
-      fetchData();
-    } catch (error) {
-      console.error("Failed to create schedule:", error);
-      showAlert("Failed to create schedule. Please try again.", "error");
-    }
-  };
+  try {
+    // Convert local datetime-local input to UTC ISO string
+    const localToUTC = (datetimeLocal: string) => {
+      const localDate = new Date(datetimeLocal);
+      const offset = localDate.getTimezoneOffset(); // offset in minutes
+      const utcDate = new Date(localDate.getTime() - offset * 60 * 1000);
+      return utcDate.toISOString();
+    };
+
+    await labSchedulesService.create({
+      labName: formData.labName,
+      teacherId: parseInt(formData.teacherId),
+      startTime: localToUTC(formData.startTime),
+      endTime: localToUTC(formData.endTime),
+      subject: formData.subject,
+    });
+
+    setIsModalOpen(false);
+    setFormData({
+      labName: "",
+      teacherId: "",
+      startTime: "",
+      endTime: "",
+      subject: "",
+    });
+
+    fetchData();
+  } catch (error) {
+    console.error("Failed to create schedule:", error);
+    showAlert("Failed to create schedule. Please try again.", "error");
+  }
+};
+
 
   // Filter schedules based on date range for export
   const getFilteredSchedules = (startDate: string, endDate: string) => {
