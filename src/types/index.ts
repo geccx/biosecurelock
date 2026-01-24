@@ -31,17 +31,37 @@ export interface User {
   fabricIdentity?: string;
 }
 
+// In your types.ts file
 export interface Schedule {
-  id: string;
+  id: number;
   labName: string;
-  teacherId: string;
-  teacherName: string;
-  startTime: Date;
-  endTime: Date;
-  status: ScheduleStatus;
-  createdBy: string;
-  createdAt: Date;
+  teacherId: number;
+  teacherName?: string;
+  startTime: Date | string; // Can be Date for one-time or string (HH:MM) for weekly
+  endTime: Date | string;   // Can be Date for one-time or string (HH:MM) for weekly
   subject?: string;
+  status: "pending" | "scheduled" | "completed" | "cancelled";
+  recurrenceType?: "one-time" | "weekly";
+  daysOfWeek?: string[]; // Array of day names: ["Monday", "Tuesday", etc.]
+  recurrenceEndDate?: string; // ISO date string
+  createdBy?: string;
+  createdAt: Date;
+}
+
+export interface LabSchedule {
+  id: number;
+  labName: string;
+  teacherId: number;
+  teacherName?: string;
+  startTime: string;
+  endTime: string;
+  subject?: string;
+  status: "pending" | "scheduled" | "completed" | "cancelled";
+  recurrenceType?: "one-time" | "weekly";
+  daysOfWeek?: string[];
+  recurrenceEndDate?: string;
+  createdBy?: number;
+  createdAt: string;
 }
 
 export interface ScheduleMoveRequest {

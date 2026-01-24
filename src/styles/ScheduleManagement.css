@@ -259,3 +259,94 @@
 .modal-form > * + * {
   margin-top: 0;
 }
+
+
+/* Existing styles remain... */
+
+/* Schedule Type Selection */
+.schedule-type-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.schedule-type-button {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: white;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.schedule-type-button:hover {
+  border-color: #9333ea;
+  background-color: #faf5ff;
+}
+
+.schedule-type-button.active {
+  border-color: #9333ea;
+  background-color: #9333ea;
+  color: white;
+}
+
+/* Days of Week Grid */
+.days-of-week-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.day-button {
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: white;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.day-button:hover {
+  border-color: #9333ea;
+  background-color: #faf5ff;
+}
+
+.day-button.selected {
+  border-color: #9333ea;
+  background-color: #9333ea;
+  color: white;
+}
+
+.selected-days-text {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Schedule Display in Table */
+.font-semibold {
+  font-weight: 600;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.text-gray-600 {
+  color: #4b5563;
+}
+
+.text-gray-500 {
+  color: #6b7280;
+}

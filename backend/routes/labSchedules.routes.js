@@ -3,8 +3,6 @@ const router = express.Router();
 const labSchedulesController = require("../controllers/labSchedules.controller");
 const {
   authenticate,
-  requireAdmin,
-  requireAdminOrTechSupport,
   hasPermission,
   hasAnyPermission,
   PERMISSIONS,
@@ -23,8 +21,7 @@ const validate = (req, res, next) => {
   next();
 };
 
-// Create a new lab schedule
-// Requires: create_schedule permission
+// Create a new lab schedule with recurring support
 router.post(
   "/",
   authenticate,
@@ -32,16 +29,23 @@ router.post(
   [
     body("labName").isString().notEmpty(),
     body("teacherId").isInt(),
-    body("startTime").isISO8601(),
-    body("endTime").isISO8601(),
     body("subject").optional().isString(),
+    body("recurrenceType").isIn(["one-time", "weekly"]),
+    // For weekly: startTime and endTime are just time strings (HH:MM)
+    // For one-time: they are ISO8601 datetime strings
+    body("startTime").notEmpty(),
+    body("endTime").notEmpty(),
+    body("daysOfWeek").optional().isArray(),
+    body("daysOfWeek.*").optional().isIn([
+      "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+    ]),
+    body("recurrenceEndDate").optional().isISO8601(),
   ],
   validate,
   labSchedulesController.createSchedule
 );
 
 // Get all lab schedules
-// Requires: view_all_schedules or view_own_schedules permission
 router.get(
   "/",
   authenticate,
@@ -62,7 +66,6 @@ router.get(
 );
 
 // Get schedules for current user (teacher)
-// Requires: view_own_schedules permission
 router.get(
   "/my-schedules",
   authenticate,
@@ -80,7 +83,6 @@ router.get(
 );
 
 // Approve a pending schedule
-// Requires: approve_schedule_move permission
 router.post(
   "/:scheduleId/approve",
   authenticate,
@@ -91,7 +93,6 @@ router.post(
 );
 
 // Disapprove/reject a pending schedule
-// Requires: approve_schedule_move permission
 router.post(
   "/:scheduleId/disapprove",
   authenticate,
@@ -111,7 +112,6 @@ router.get(
 );
 
 // Update a schedule
-// Requires: edit_schedule permission
 router.put(
   "/:scheduleId",
   authenticate,
@@ -120,9 +120,15 @@ router.put(
     param("scheduleId").isInt(),
     body("labName").optional().isString(),
     body("teacherId").optional().isInt(),
-    body("startTime").optional().isISO8601(),
-    body("endTime").optional().isISO8601(),
+    body("startTime").optional(),
+    body("endTime").optional(),
     body("subject").optional().isString(),
+    body("recurrenceType").optional().isIn(["one-time", "weekly"]),
+    body("daysOfWeek").optional().isArray(),
+    body("daysOfWeek.*").optional().isIn([
+      "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+    ]),
+    body("recurrenceEndDate").optional().isISO8601(),
     body("status")
       .optional()
       .isIn(["pending", "scheduled", "completed", "cancelled"]),
@@ -132,7 +138,6 @@ router.put(
 );
 
 // Delete a schedule
-// Requires: delete_schedule permission
 router.delete(
   "/:scheduleId",
   authenticate,
