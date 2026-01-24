@@ -56,13 +56,27 @@ class SchedulerService {
     logger.info("Scheduler service initialized");
   }
 
-  // Check active schedules and auto-unlock if needed
-// Update this method in your existing scheduler.service.js file
+ // Update the checkSchedules method in scheduler.service.js
 async checkSchedules() {
   try {
     const now = new Date();
     const currentDay = now.toLocaleDateString("en-US", { weekday: "long" });
     const currentTime = now.toTimeString().split(" ")[0].substring(0, 5); // HH:MM
+
+    // Check if recurrence_type column exists first
+    try {
+      const [columns] = await db.query(
+        "SHOW COLUMNS FROM lab_schedules LIKE 'recurrence_type'"
+      );
+      
+      if (columns.length === 0) {
+        logger.debug("recurrence_type column not found, skipping schedule check");
+        return;
+      }
+    } catch (checkError) {
+      logger.debug("Error checking for recurrence_type column:", checkError.message);
+      return;
+    }
 
     // Get active weekly schedules for current day and time
     const [schedules] = await db.query(
@@ -77,6 +91,10 @@ async checkSchedules() {
        AND (s.recurrence_end_date IS NULL OR s.recurrence_end_date >= CURDATE())`,
       [JSON.stringify(currentDay), currentTime, currentTime]
     );
+
+    if (schedules.length === 0) {
+      return;
+    }
 
     logger.info(`Found ${schedules.length} active schedules for ${currentDay} at ${currentTime}`);
 

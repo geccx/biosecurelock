@@ -3,107 +3,167 @@ const logger = require("../utils/logger");
 
 class LabSchedulesController {
   // Create a new lab schedule
-  async createSchedule(req, res) {
-    const connection = await db.getConnection();
-    
-    try {
-      const {
-        labName,
-        teacherId,
-        startTime,
-        endTime,
-        subject,
-        recurrenceType = "one-time",
-        daysOfWeek = [],
-        recurrenceEndDate
-      } = req.body;
+// In labSchedules.controller.js, update the createSchedule method
+async createSchedule(req, res) {
+  const connection = await db.getConnection();
+  
+  try {
+    const {
+      labName,
+      teacherId,
+      startTime,
+      endTime,
+      subject,
+      recurrenceType = "one-time",
+      daysOfWeek = [],
+      recurrenceEndDate
+    } = req.body;
 
-      // Validation for weekly schedules
-      if (recurrenceType === "weekly" && daysOfWeek.length === 0) {
+    // Detailed validation logging
+    logger.info("Creating schedule with data:", {
+      labName,
+      teacherId,
+      startTime,
+      endTime,
+      subject,
+      recurrenceType,
+      daysOfWeek,
+      recurrenceEndDate
+    });
+
+    // Validation for weekly schedules
+    if (recurrenceType === "weekly") {
+      if (!Array.isArray(daysOfWeek) || daysOfWeek.length === 0) {
         return res.status(400).json({
           success: false,
-          message: "Please select at least one day of the week for weekly schedules"
+          message: "Please select at least one day of the week for weekly schedules",
+          details: { daysOfWeek, type: typeof daysOfWeek }
         });
       }
 
-      await connection.beginTransaction();
-
-      // Get teacher name
-      const [teachers] = await connection.query(
-        "SELECT username FROM users WHERE id = ?",
-        [teacherId]
-      );
-      const teacherName = teachers.length > 0 ? teachers[0].username : null;
-
-      // For weekly schedules, store time as TIME type
-      // For one-time schedules, store as DATETIME
-      let finalStartTime, finalEndTime;
-      
-      if (recurrenceType === "weekly") {
-        // Just store the time part (HH:MM:SS)
-        finalStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
-        finalEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
-      } else {
-        // Convert ISO string to MySQL datetime
-        finalStartTime = new Date(startTime);
-        finalEndTime = new Date(endTime);
+      // Validate time format for weekly schedules (should be HH:MM)
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(startTime)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid start time format for weekly schedule. Expected HH:MM",
+          details: { startTime }
+        });
       }
-
-      const [result] = await connection.query(
-        `INSERT INTO lab_schedules 
-        (lab_name, teacher_id, teacher_name, start_time, end_time, subject, 
-         recurrence_type, days_of_week, recurrence_end_date, status, created_by) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?)`,
-        [
-          labName,
-          teacherId,
-          teacherName,
-          finalStartTime,
-          finalEndTime,
-          subject || null,
-          recurrenceType,
-          JSON.stringify(daysOfWeek),
-          recurrenceEndDate || null,
-          req.user.id
-        ]
-      );
-
-      await connection.commit();
-
-      logger.info("Lab schedule created", {
-        scheduleId: result.insertId,
-        teacherId,
-        recurrenceType
-      });
-
-      res.json({
-        success: true,
-        message: "Schedule created successfully",
-        data: {
-          id: result.insertId,
-          labName,
-          teacherId,
-          teacherName,
-          startTime,
-          endTime,
-          subject,
-          recurrenceType,
-          daysOfWeek,
-          recurrenceEndDate,
-          status: "scheduled"
-        }
-      });
-    } catch (error) {
-      await connection.rollback();
-      logger.error("Error creating lab schedule:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to create schedule"
-      });
-    } finally {
-      connection.release();
+      if (!timeRegex.test(endTime)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid end time format for weekly schedule. Expected HH:MM",
+          details: { endTime }
+        });
+      }
+    } else {
+      // Validate datetime for one-time schedules
+      if (isNaN(Date.parse(startTime))) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid start datetime for one-time schedule",
+          details: { startTime }
+        });
+      }
+      if (isNaN(Date.parse(endTime))) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid end datetime for one-time schedule",
+          details: { endTime }
+        });
+      }
     }
+
+    await connection.beginTransaction();
+
+    // Get teacher name
+    const [teachers] = await connection.query(
+      "SELECT username FROM users WHERE id = ?",
+      [teacherId]
+    );
+    
+    if (teachers.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found"
+      });
+    }
+
+    const teacherName = teachers[0].username;
+
+    // For weekly schedules, store time as TIME type
+    // For one-time schedules, store as DATETIME
+    let finalStartTime, finalEndTime;
+    
+    if (recurrenceType === "weekly") {
+      // Just store the time part (HH:MM:SS)
+      finalStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
+      finalEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
+    } else {
+      // Convert ISO string to MySQL datetime
+      finalStartTime = new Date(startTime).toISOString().slice(0, 19).replace('T', ' ');
+      finalEndTime = new Date(endTime).toISOString().slice(0, 19).replace('T', ' ');
+    }
+
+    const [result] = await connection.query(
+      `INSERT INTO lab_schedules 
+      (lab_name, teacher_id, teacher_name, start_time, end_time, subject, 
+       recurrence_type, days_of_week, recurrence_end_date, status, created_by) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?)`,
+      [
+        labName,
+        teacherId,
+        teacherName,
+        finalStartTime,
+        finalEndTime,
+        subject || null,
+        recurrenceType,
+        JSON.stringify(daysOfWeek),
+        recurrenceEndDate || null,
+        req.user.id
+      ]
+    );
+
+    await connection.commit();
+
+    logger.info("Lab schedule created successfully", {
+      scheduleId: result.insertId,
+      teacherId,
+      recurrenceType
+    });
+
+    res.json({
+      success: true,
+      message: "Schedule created successfully",
+      data: {
+        id: result.insertId,
+        labName,
+        teacherId,
+        teacherName,
+        startTime,
+        endTime,
+        subject,
+        recurrenceType,
+        daysOfWeek,
+        recurrenceEndDate,
+        status: "scheduled"
+      }
+    });
+  } catch (error) {
+    await connection.rollback();
+    logger.error("Error creating lab schedule:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create schedule",
+      error: error.message,
+      details: error.sqlMessage || error.toString()
+    });
+  } finally {
+    connection.release();
   }
+}
 
   // Get all schedules with filters
   async getAllSchedules(req, res) {

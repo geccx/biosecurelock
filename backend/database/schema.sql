@@ -287,16 +287,29 @@ INSERT INTO users (username, email, password_hash, role, status, department)
 VALUES ('Tech Support', 'support@lab.edu', '$2a$10$hvL.CEMTukN.1Jz6GuKyhO8adO46OE3ChAXzW1nVLvcu45dpjKkkG', 'techsupport', 'active', 'IT Department')
 ON DUPLICATE KEY UPDATE password_hash='$2a$10$hvL.CEMTukN.1Jz6GuKyhO8adO46OE3ChAXzW1nVLvcu45dpjKkkG';
 
--- Sample laboratories
-INSERT INTO laboratories (name, location, capacity, lock_status) VALUES
-('Computer Lab 1', 'Building A, Floor 2', 30, 'locked'),
-('Computer Lab 2', 'Building A, Floor 3', 25, 'locked'),
-('Engineering Lab 1', 'Building B, Floor 1', 20, 'locked');
+-- Sample laboratories (only insert if not exists)
+INSERT INTO laboratories (name, location, capacity, lock_status) 
+SELECT * FROM (
+    SELECT 'Computer Lab 1' as name, 'Building A, Floor 2' as location, 30 as capacity, 'locked' as lock_status
+    UNION ALL
+    SELECT 'Computer Lab 2', 'Building A, Floor 3', 25, 'locked'
+    UNION ALL
+    SELECT 'Engineering Lab 1', 'Building B, Floor 1', 20, 'locked'
+) AS tmp
+WHERE NOT EXISTS (
+    SELECT 1 FROM laboratories WHERE name = tmp.name
+) LIMIT 3;
 
--- Sample devices
-INSERT INTO devices (device_name, type, status, location) VALUES
-('Main Door Lock', 'lock', 'online', 'Computer Lab 1'),
-('Fingerprint Scanner', 'fingerprint', 'online', 'Computer Lab 1');
+-- Sample devices (only insert if not exists)
+INSERT INTO devices (device_name, type, status, location) 
+SELECT * FROM (
+    SELECT 'Main Door Lock' as device_name, 'lock' as type, 'online' as status, 'Computer Lab 1' as location
+    UNION ALL
+    SELECT 'Fingerprint Scanner', 'fingerprint', 'online', 'Computer Lab 1'
+) AS tmp
+WHERE NOT EXISTS (
+    SELECT 1 FROM devices WHERE device_name = tmp.device_name
+) LIMIT 2;
 
 -- Note: To generate a bcrypt hash for passwords, use:
 -- node -e "require('bcryptjs').hash('yourpassword', 10).then(console.log)"

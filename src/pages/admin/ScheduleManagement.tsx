@@ -102,57 +102,59 @@ export function ScheduleManagement() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    // Validation for weekly schedules
-    if (formData.recurrenceType === "weekly" && formData.daysOfWeek.length === 0) {
-      showAlert("Please select at least one day of the week for weekly schedules", "error");
-      return;
+  // Validation for weekly schedules
+  if (formData.recurrenceType === "weekly" && formData.daysOfWeek.length === 0) {
+    showAlert("Please select at least one day of the week for weekly schedules", "error");
+    return;
+  }
+
+  try {
+    const submitData: any = {
+      labName: formData.labName,
+      teacherId: parseInt(formData.teacherId),
+      subject: formData.subject,
+      recurrenceType: formData.recurrenceType,
+    };
+
+    if (formData.recurrenceType === "weekly") {
+      // For weekly schedules, send just time (HH:MM)
+      submitData.startTime = formData.startTime; // Should be "14:00" format
+      submitData.endTime = formData.endTime;     // Should be "16:00" format
+      submitData.daysOfWeek = formData.daysOfWeek; // Should be ["Tuesday", "Thursday"]
+      submitData.recurrenceEndDate = formData.recurrenceEndDate || null;
+    } else {
+      // For one-time schedules, send full datetime ISO string
+      submitData.startTime = new Date(formData.startTime).toISOString();
+      submitData.endTime = new Date(formData.endTime).toISOString();
+      submitData.daysOfWeek = [];
+      submitData.recurrenceEndDate = null;
     }
 
-    try {
-      const submitData: any = {
-        labName: formData.labName,
-        teacherId: parseInt(formData.teacherId),
-        subject: formData.subject,
-        recurrenceType: formData.recurrenceType,
-      };
+    console.log("Submitting schedule data:", submitData); // Debug log
 
-      if (formData.recurrenceType === "weekly") {
-        // For weekly schedules, send just time (HH:MM)
-        submitData.startTime = formData.startTime;
-        submitData.endTime = formData.endTime;
-        submitData.daysOfWeek = formData.daysOfWeek;
-        submitData.recurrenceEndDate = formData.recurrenceEndDate || null;
-      } else {
-        // For one-time schedules, send full datetime
-        submitData.startTime = new Date(formData.startTime).toISOString();
-        submitData.endTime = new Date(formData.endTime).toISOString();
-        submitData.daysOfWeek = [];
-        submitData.recurrenceEndDate = null;
-      }
+    await labSchedulesService.create(submitData);
 
-      await labSchedulesService.create(submitData);
-
-      setIsModalOpen(false);
-      setFormData({
-        labName: "",
-        teacherId: "",
-        startTime: "",
-        endTime: "",
-        subject: "",
-        recurrenceType: "weekly",
-        daysOfWeek: [],
-        recurrenceEndDate: "",
-      });
-      fetchData();
-      showAlert("Schedule created successfully!", "success");
-    } catch (error) {
-      console.error("Failed to create schedule:", error);
-      showAlert("Failed to create schedule. Please try again.", "error");
-    }
-  };
+    setIsModalOpen(false);
+    setFormData({
+      labName: "",
+      teacherId: "",
+      startTime: "",
+      endTime: "",
+      subject: "",
+      recurrenceType: "weekly",
+      daysOfWeek: [],
+      recurrenceEndDate: "",
+    });
+    fetchData();
+    showAlert("Schedule created successfully!", "success");
+  } catch (error) {
+    console.error("Failed to create schedule:", error);
+    showAlert("Failed to create schedule. Please try again.", "error");
+  }
+};
 
   const toggleDayOfWeek = (day: string) => {
     setFormData(prev => ({
