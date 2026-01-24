@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { PlusIcon, DownloadIcon, FileTextIcon, FileSpreadsheetIcon } from "lucide-react";
+import { PlusIcon, DownloadIcon, FileTextIcon, FileSpreadsheetIcon, TrashIcon } from "lucide-react";
+import { Card } from "../../components/common/Card";
 import { Button } from "../../components/common/Button";
 import { Badge } from "../../components/common/Badge";
 import { Table } from "../../components/common/Table";
@@ -27,6 +28,8 @@ export function ScheduleManagement() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [scheduleToDelete, setScheduleToDelete] = useState<Schedule | null>(null);
   const [formData, setFormData] = useState({
     labName: "",
     teacherId: "",
@@ -101,12 +104,47 @@ export function ScheduleManagement() {
         subject: "",
       });
       fetchData();
+      showAlert("Schedule created successfully!", "success");
     } catch (error) {
       console.error("Failed to create schedule:", error);
       showAlert("Failed to create schedule. Please try again.", "error");
     }
   };
 
+  // Open delete confirmation modal
+  const handleDeleteClick = (schedule: Schedule) => {
+    setScheduleToDelete(schedule);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Confirm and delete schedule
+  const handleDeleteConfirm = async () => {
+    if (!scheduleToDelete) return;
+
+    try {
+      const response = await labSchedulesService.delete(scheduleToDelete.id);
+      
+      if (response.success) {
+        showAlert("Schedule deleted successfully!", "success");
+        setIsDeleteModalOpen(false);
+        setScheduleToDelete(null);
+        fetchData();
+      } else {
+        showAlert("Failed to delete schedule. Please try again.", "error");
+      }
+    } catch (error) {
+      console.error("Failed to delete schedule:", error);
+      showAlert("Failed to delete schedule. Please try again.", "error");
+    }
+  };
+
+  // Cancel delete
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false);
+    setScheduleToDelete(null);
+  };
+
+  // Filter schedules based on date range for export
   const getFilteredSchedules = (startDate: string, endDate: string) => {
     if (!startDate && !endDate) {
       return schedules;
@@ -118,6 +156,7 @@ export function ScheduleManagement() {
       const end = endDate ? new Date(endDate) : null;
 
       if (start && end) {
+        // Set end date to end of day
         end.setHours(23, 59, 59, 999);
         return scheduleDate >= start && scheduleDate <= end;
       } else if (start) {
@@ -145,6 +184,7 @@ export function ScheduleManagement() {
       handleExportCSV(filteredSchedules);
     }
 
+    // Close modal after export
     setIsExportModalOpen(false);
     setExportStartDate("");
     setExportEndDate("");
@@ -154,9 +194,11 @@ export function ScheduleManagement() {
     try {
       const doc = new jsPDF();
       
+      // Add title
       doc.setFontSize(18);
       doc.text("Schedule Report", 14, 22);
       
+      // Add date range info
       doc.setFontSize(10);
       const dateRangeText = exportStartDate || exportEndDate
         ? `Date Range: ${exportStartDate || "All"} to ${exportEndDate || "All"}`
@@ -165,6 +207,7 @@ export function ScheduleManagement() {
       doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
       doc.text(`Total Schedules: ${schedulesToExport.length}`, 14, 42);
 
+      // Prepare table data
       const tableData = schedulesToExport.map((schedule) => [
         schedule.labName,
         schedule.subject || "N/A",
@@ -182,15 +225,17 @@ export function ScheduleManagement() {
         schedule.status,
       ]);
 
+      // Add table with purple theme
       autoTable(doc, {
         startY: 48,
         head: [["Laboratory", "Subject", "Date", "Time", "Teacher", "Status"]],
         body: tableData,
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [102, 126, 234] },
-        alternateRowStyles: { fillColor: [249, 250, 251] },
+        headStyles: { fillColor: [147, 51, 234] }, // Purple theme
+        alternateRowStyles: { fillColor: [250, 245, 255] }, // Light purple
       });
 
+      // Save PDF
       const fileName = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.pdf`;
       doc.save(fileName);
       showAlert("PDF exported successfully!", "success");
@@ -202,6 +247,7 @@ export function ScheduleManagement() {
 
   const handleExportCSV = (schedulesToExport: Schedule[]) => {
     try {
+      // CSV headers
       const headers = [
         "Laboratory Name",
         "Subject",
@@ -212,6 +258,7 @@ export function ScheduleManagement() {
         "Status",
       ];
 
+      // CSV rows
       const rows = schedulesToExport.map((schedule) => [
         schedule.labName,
         schedule.subject || "N/A",
@@ -228,10 +275,12 @@ export function ScheduleManagement() {
         schedule.status,
       ]);
 
+      // Combine headers and rows
       const csvContent = [headers, ...rows]
         .map((row) => row.map((cell) => `"${cell}"`).join(","))
         .join("\n");
 
+      // Create blob and download
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -295,6 +344,19 @@ export function ScheduleManagement() {
         </Badge>
       ),
     },
+    {
+      header: "Actions",
+      accessor: (schedule: Schedule) => (
+        <Button
+          onClick={() => handleDeleteClick(schedule)}
+          variant="danger"
+          size="sm"
+        >
+          <TrashIcon className="icon-sm" />
+          Delete
+        </Button>
+      ),
+    },
   ];
 
   if (loading) {
@@ -307,9 +369,9 @@ export function ScheduleManagement() {
 
   return (
     <div className="schedule-management-container">
-      <div className="dashboard-card">
-        <div className="card-header">
-          <h3 className="card-title">Schedule Management</h3>
+      <Card
+        title="Schedule Management"
+        action={
           <div className="card-actions">
             <Button
               onClick={() => setIsExportModalOpen(true)}
@@ -325,15 +387,60 @@ export function ScheduleManagement() {
               Create Schedule
             </Button>
           </div>
-        </div>
+        }
+      >
         {schedules.length > 0 ? (
           <Table data={schedules} columns={columns} />
         ) : (
-          <div className="schedule-empty-state">
-            <p>No schedules found</p>
-          </div>
+          <p className="schedule-empty-state">No schedules found</p>
         )}
-      </div>
+      </Card>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={handleDeleteCancel}
+        title="Delete Schedule"
+      >
+        <div className="modal-form">
+          <p className="modal-description">
+            Are you sure you want to delete this schedule? This action cannot be undone.
+          </p>
+          
+          {scheduleToDelete && (
+            <div className="delete-schedule-details">
+              <p><strong>Laboratory:</strong> {scheduleToDelete.labName}</p>
+              <p><strong>Subject:</strong> {scheduleToDelete.subject || "N/A"}</p>
+              <p><strong>Teacher:</strong> {scheduleToDelete.teacherName || "N/A"}</p>
+              <p><strong>Date:</strong> {scheduleToDelete.startTime.toLocaleDateString()}</p>
+              <p><strong>Time:</strong> {scheduleToDelete.startTime.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })} - {scheduleToDelete.endTime.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}</p>
+            </div>
+          )}
+
+          <div className="modal-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleDeleteCancel}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={handleDeleteConfirm}
+            >
+              Delete Schedule
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Export Modal */}
       <Modal
@@ -352,7 +459,9 @@ export function ScheduleManagement() {
 
           {/* Export Format Selection */}
           <div className="export-format-container">
-            <label className="export-format-label">Export Format</label>
+            <label className="export-format-label">
+              Export Format
+            </label>
             <div className="export-format-buttons">
               <button
                 onClick={() => setExportFormat("pdf")}
@@ -373,10 +482,14 @@ export function ScheduleManagement() {
 
           {/* Date Filter */}
           <div className="date-filter-container">
-            <label className="date-filter-label">Date Range (Optional)</label>
+            <label className="date-filter-label">
+              Date Range (Optional)
+            </label>
             <div className="date-filter-grid">
               <div className="date-input-wrapper">
-                <label className="date-input-label">Start Date</label>
+                <label className="date-input-label">
+                  Start Date
+                </label>
                 <Input
                   type="date"
                   value={exportStartDate}
@@ -385,7 +498,9 @@ export function ScheduleManagement() {
                 />
               </div>
               <div className="date-input-wrapper">
-                <label className="date-input-label">End Date</label>
+                <label className="date-input-label">
+                  End Date
+                </label>
                 <Input
                   type="date"
                   value={exportEndDate}
@@ -452,7 +567,9 @@ export function ScheduleManagement() {
           </div>
 
           <div className="form-field">
-            <label className="form-field-label">Teacher</label>
+            <label className="form-field-label">
+              Teacher
+            </label>
             <select
               value={formData.teacherId}
               onChange={(e) =>
