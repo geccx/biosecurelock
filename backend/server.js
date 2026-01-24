@@ -1,12 +1,12 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const dbInitializer = require("./services/dbInitializer.service");
 const fabricService = require("./services/fabric.service");
 const schedulerService = require("./services/scheduler.service");
 const logger = require("./utils/logger");
 
 // Suppress non-critical Fabric event service errors when discovery is disabled
-// These errors are expected when discovery is disabled and don't affect functionality
 const originalConsoleError = console.error;
 const originalStdErrWrite = process.stderr.write.bind(process.stderr);
 
@@ -15,26 +15,24 @@ console.error = function (...args) {
   const stack = String(args[0]?.stack || "");
   const firstArg = String(args[0] || "");
 
-  // Suppress "No targets provided" errors from event service (non-critical when discovery is disabled)
   if (
     message.includes("No targets provided") ||
     stack.includes("No targets provided") ||
     firstArg.includes("No targets provided")
   ) {
-    return; // Suppress this error
+    return;
   }
 
   originalConsoleError.apply(console, args);
 };
 
-// Also intercept stderr writes (Fabric SDK uses this)
 process.stderr.write = function (chunk, encoding, callback) {
   const message = chunk?.toString() || "";
   if (
     message.includes("No targets provided") ||
     message.includes("[BlockEventSource]")
   ) {
-    return true; // Suppress
+    return true;
   }
   return originalStdErrWrite(chunk, encoding, callback);
 };
@@ -129,70 +127,103 @@ app.use((req, res) => {
 // Initialize services and start server
 async function startServer() {
   try {
-    logger.info("Starting Smart Door Lock System...");
+    logger.info("🚀 Starting Smart Door Lock System...");
+    logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
+    logger.info(`Database: ${process.env.DB_HOST || "localhost"}:${process.env.DB_PORT || "3306"}`);
 
-    // Initialize Hyperledger Fabric
-    logger.info("Initializing Hyperledger Fabric...");
+    // ===================================
+    // STEP 1: Initialize Database
+    // ===================================
+    logger.info("📊 STEP 1: Initializing Database...");
+    try {
+      await dbInitializer.initialize();
+      logger.info("✓ Database initialized successfully");
+
+      // Verify database setup
+      const isValid = await dbInitializer.verify();
+      if (!isValid) {
+        logger.error("❌ Database verification failed");
+        logger.error("Please check the database configuration and try again");
+        process.exit(1);
+      }
+    } catch (dbError) {
+      logger.error("❌ Database initialization failed:", dbError.message);
+      logger.error("Cannot start server without database");
+      process.exit(1);
+    }
+
+    // ===================================
+    // STEP 2: Initialize Hyperledger Fabric
+    // ===================================
+    logger.info("⛓️  STEP 2: Initializing Hyperledger Fabric...");
     try {
       await fabricService.initialize();
       logger.info("✓ Hyperledger Fabric initialized");
     } catch (fabricError) {
-      logger.error(
-        "✗ Hyperledger Fabric initialization failed:",
-        fabricError.message
-      );
+      logger.error("✗ Hyperledger Fabric initialization failed:", fabricError.message);
       logger.warn("Server will start but Fabric features will be unavailable");
       logger.warn("Please check:");
       logger.warn("  1. Channel name in .env matches AWS instance");
       logger.warn("  2. Admin identity is enrolled in wallet");
       logger.warn("  3. Connection profile paths are correct");
       logger.warn("  4. AWS instance network is running and accessible");
-      // Continue server startup even if Fabric fails
     }
 
-    // Initialize Scheduler
-    logger.info("Initializing scheduler...");
-    await schedulerService.initialize();
-    logger.info("✓ Scheduler initialized");
+    // ===================================
+    // STEP 3: Initialize Scheduler
+    // ===================================
+    logger.info("⏰ STEP 3: Initializing Scheduler...");
+    try {
+      await schedulerService.initialize();
+      logger.info("✓ Scheduler initialized");
+    } catch (schedulerError) {
+      logger.error("✗ Scheduler initialization failed:", schedulerError.message);
+      logger.warn("Server will start but scheduled tasks will not run");
+    }
 
-    // Start Express server
+    // ===================================
+    // STEP 4: Start Express Server
+    // ===================================
+    logger.info("🌐 STEP 4: Starting Express Server...");
     app.listen(PORT, () => {
       logger.info(`✓ Server running on port ${PORT}`);
-      logger.info("Smart Door Lock System is ready!");
+      logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      logger.info("🎉 Smart Door Lock System is ready!");
+      logger.info(`📡 API endpoint: http://localhost:${PORT}`);
+      logger.info(`🔐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+      logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     });
 
-    // Setup Fabric event listeners (only if Fabric is initialized)
+    // ===================================
+    // STEP 5: Setup Fabric Event Listeners
+    // ===================================
     if (fabricService.contract) {
       try {
-        await fabricService.addContractListener(
-          "EnrollmentRequested",
-          (event) => {
-            logger.info("Fabric Event - Enrollment Requested:", event);
-          }
-        );
+        logger.info("📡 Setting up Fabric event listeners...");
+        
+        await fabricService.addContractListener("EnrollmentRequested", (event) => {
+          logger.info("Fabric Event - Enrollment Requested:", event);
+        });
 
-        await fabricService.addContractListener(
-          "EnrollmentApproved",
-          (event) => {
-            logger.info("Fabric Event - Enrollment Approved:", event);
-          }
-        );
+        await fabricService.addContractListener("EnrollmentApproved", (event) => {
+          logger.info("Fabric Event - Enrollment Approved:", event);
+        });
 
         await fabricService.addContractListener("AccessLogged", (event) => {
           logger.info("Fabric Event - Access Logged:", event);
         });
+        
         logger.info("✓ Fabric event listeners registered");
       } catch (listenerError) {
-        logger.warn(
-          "Failed to setup Fabric event listeners:",
-          listenerError.message
-        );
+        logger.warn("Failed to setup Fabric event listeners:", listenerError.message);
       }
     } else {
-      logger.warn("Fabric event listeners skipped (Fabric not initialized)");
+      logger.warn("⚠️  Fabric event listeners skipped (Fabric not initialized)");
     }
+
   } catch (error) {
-    logger.error("Failed to start server:", error);
+    logger.error("❌ Failed to start server:", error);
+    logger.error(error.stack);
     process.exit(1);
   }
 }
@@ -200,20 +231,27 @@ async function startServer() {
 // Graceful shutdown
 process.on("SIGTERM", async () => {
   logger.info("SIGTERM received, shutting down gracefully...");
-
   schedulerService.stop();
   await fabricService.disconnect();
-
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
   logger.info("SIGINT received, shutting down gracefully...");
-
   schedulerService.stop();
   await fabricService.disconnect();
-
   process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught Exception:", error);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+  process.exit(1);
 });
 
 // Start the server
