@@ -54,20 +54,21 @@ export function ScheduleManagement() {
       ]);
 
       if (schedulesRes.success && schedulesRes.data) {
-        setSchedules(
-          schedulesRes.data.map((s) => ({
-            id: s.id,
-            labName: s.labName,
-            teacherId: s.teacherId,
-            teacherName: s.teacherName,
-            startTime: new Date(s.startTime),
-            endTime: new Date(s.endTime),
-            subject: s.subject,
-            status: s.status,
-            createdBy: s.createdBy || "",
-            createdAt: new Date(s.createdAt),
-          }))
-        );
+setSchedules(
+  schedulesRes.data.map((s) => ({
+    id: s.id,
+    labName: s.labName,
+    teacherId: s.teacherId,
+    teacherName: s.teacherName,
+    startTime: new Date(s.startTime), // convert local string to Date for display
+    endTime: new Date(s.endTime),
+    subject: s.subject,
+    status: s.status,
+    createdBy: s.createdBy || "",
+    createdAt: new Date(s.createdAt),
+  }))
+);
+
       }
 
       if (teachersRes.success && teachersRes.data) {
@@ -87,13 +88,14 @@ export function ScheduleManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await labSchedulesService.create({
-        labName: formData.labName,
-        teacherId: parseInt(formData.teacherId),
-        startTime: new Date(formData.startTime).toISOString(),
-        endTime: new Date(formData.endTime).toISOString(),
-        subject: formData.subject,
-      });
+ await labSchedulesService.create({
+  labName: formData.labName,
+  teacherId: parseInt(formData.teacherId),
+  startTime: formData.startTime, // store as local datetime string
+  endTime: formData.endTime,     // store as local datetime string
+  subject: formData.subject,
+});
+
 
       setIsModalOpen(false);
       setFormData({
