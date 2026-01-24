@@ -1,0 +1,59 @@
+/* ScheduleCalendar Component Styles - Purple Theme */
+
+.schedule-calendar-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24rem;
+}
+
+.schedule-calendar-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 4px solid #9333ea;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.schedule-info {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #7c3aed;
+}
+
+.calendar-container {
+  height: 600px;
+}
+
+/* Custom Calendar Event Styles - Purple Theme */
+.schedule-event {
+  padding: 0.25rem;
+}
+
+.schedule-event-teacher {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.schedule-event-subject {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.schedule-event-lab {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.schedule-event-time {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  margin-top: 0.25rem;
+}

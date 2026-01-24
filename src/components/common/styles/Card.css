@@ -1,0 +1,28 @@
+/* Card Component Styles - Purple Theme */
+
+.card {
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px 0 rgba(147, 51, 234, 0.05);
+  border: 1px solid #e9d5ff;
+}
+
+.card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9d5ff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #faf5ff;
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #6b21a8;
+  margin: 0;
+}
+
+.card-body {
+  padding: 1.5rem;
+}

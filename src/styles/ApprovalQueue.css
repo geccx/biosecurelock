@@ -1,0 +1,311 @@
+/* ApprovalQueue Component Styles - Purple Theme */
+
+.approval-queue-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Loading Spinner - Purple */
+.approval-loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16rem;
+}
+
+.approval-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 4px solid #9333ea;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Empty State */
+.approval-empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #a855f7;
+}
+
+.approval-empty-icon {
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 0.75rem;
+  color: #d8b4fe;
+}
+
+.approval-empty-text {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* Scrollable Request List */
+.request-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* Custom Scrollbar - Purple Theme */
+.request-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.request-list::-webkit-scrollbar-track {
+  background-color: #faf5ff;
+  border-radius: 4px;
+}
+
+.request-list::-webkit-scrollbar-thumb {
+  background-color: #d8b4fe;
+  border-radius: 4px;
+}
+
+.request-list::-webkit-scrollbar-thumb:hover {
+  background-color: #c084fc;
+}
+
+/* Firefox Scrollbar */
+.request-list {
+  scrollbar-width: thin;
+  scrollbar-color: #d8b4fe #faf5ff;
+}
+
+/* Request Card */
+.request-card {
+  border: 1px solid #e9d5ff;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  background-color: #ffffff;
+  transition: all 0.2s;
+}
+
+.request-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(147, 51, 234, 0.1);
+  border-color: #d8b4fe;
+}
+
+/* Request Header */
+.request-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.request-info {
+  flex: 1;
+}
+
+.request-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #6b21a8;
+  margin: 0 0 0.25rem 0;
+}
+
+.request-subtitle {
+  font-size: 0.875rem;
+  color: #7c3aed;
+  margin: 0 0 0.25rem 0;
+}
+
+.request-meta {
+  font-size: 0.75rem;
+  color: #a855f7;
+  margin: 0;
+}
+
+/* Request Details Grid */
+.request-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.request-detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.request-detail-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b21a8;
+  margin-bottom: 0.25rem;
+}
+
+.request-detail-value {
+  font-size: 0.875rem;
+  color: #4c1d95;
+  margin: 0;
+}
+
+.request-detail-value-mono {
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: #6b21a8;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Single Column Detail */
+.request-detail-full {
+  margin-bottom: 1rem;
+}
+
+/* Request Actions */
+.request-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Recently Reviewed List */
+.reviewed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* Custom Scrollbar for Reviewed List */
+.reviewed-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.reviewed-list::-webkit-scrollbar-track {
+  background-color: #faf5ff;
+  border-radius: 4px;
+}
+
+.reviewed-list::-webkit-scrollbar-thumb {
+  background-color: #d8b4fe;
+  border-radius: 4px;
+}
+
+.reviewed-list::-webkit-scrollbar-thumb:hover {
+  background-color: #c084fc;
+}
+
+.reviewed-list {
+  scrollbar-width: thin;
+  scrollbar-color: #d8b4fe #faf5ff;
+}
+
+/* Reviewed Item */
+.reviewed-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background-color: #faf5ff;
+  border-radius: 0.5rem;
+  border: 1px solid #e9d5ff;
+}
+
+.reviewed-item-info {
+  flex: 1;
+}
+
+.reviewed-item-name {
+  font-weight: 500;
+  color: #6b21a8;
+  margin: 0 0 0.25rem 0;
+}
+
+.reviewed-item-lab {
+  font-size: 0.875rem;
+  color: #7c3aed;
+  margin: 0 0 0.25rem 0;
+}
+
+.reviewed-item-meta {
+  font-size: 0.75rem;
+  color: #a855f7;
+  margin: 0;
+}
+
+/* Icon Utilities */
+.icon-sm {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.25rem;
+}
+
+.icon-md {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .request-details {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .request-actions {
+    flex-direction: column;
+  }
+
+  .request-actions button {
+    width: 100%;
+  }
+
+  .reviewed-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .request-list {
+    max-height: 500px;
+  }
+
+  .reviewed-list {
+    max-height: 300px;
+  }
+}
+
+/* Tablet Design */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .request-list {
+    max-height: 550px;
+  }
+
+  .reviewed-list {
+    max-height: 350px;
+  }
+}
+
+/* Animation for new items */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.request-card,
+.reviewed-item {
+  animation: slideIn 0.3s ease-out;
+}

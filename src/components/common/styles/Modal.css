@@ -1,0 +1,94 @@
+/* Modal Component Styles - Purple Theme */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(107, 33, 168, 0.3);
+  transition: opacity 0.3s;
+}
+
+.modal-container {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-content {
+  position: relative;
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  text-align: left;
+  box-shadow: 0 20px 25px -5px rgba(147, 51, 234, 0.1), 0 10px 10px -5px rgba(147, 51, 234, 0.04);
+  transform: translateY(0);
+  transition: all 0.3s;
+  width: 100%;
+  border: 1px solid #e9d5ff;
+}
+
+/* Modal Sizes */
+.modal-sm {
+  max-width: 28rem;
+}
+
+.modal-md {
+  max-width: 32rem;
+}
+
+.modal-lg {
+  max-width: 42rem;
+}
+
+.modal-xl {
+  max-width: 56rem;
+}
+
+.modal-header {
+  background-color: #faf5ff;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9d5ff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #6b21a8;
+  margin: 0;
+}
+
+.modal-close-button {
+  background: none;
+  border: none;
+  color: #a855f7;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.modal-close-button:hover {
+  color: #7c3aed;
+}
+
+.modal-close-button:focus {
+  outline: none;
+}
+
+.modal-body {
+  background-color: #ffffff;
+  padding: 1rem 1.5rem;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}

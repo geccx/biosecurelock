@@ -1,0 +1,39 @@
+{
+  "name": "smart-door-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "test:tuya": "node scripts/test-tuya-endpoints.js",
+    "test:tuya:basic": "node scripts/test-tuya.js",
+    "test:tuya:debug": "node scripts/test-tuya.js",
+    "test:tuya:users": "node scripts/test-tuya-users.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@tuya/tuya-connector-nodejs": "^2.1.2",
+    "axios": "^1.5.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.1.1",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "fabric-ca-client": "^2.2.20",
+    "fabric-network": "^2.2.20",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.6.0",
+    "node-cron": "^3.0.2",
+    "pdfkit": "^0.17.2",
+    "winston": "^3.18.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}

@@ -1,0 +1,56 @@
+/* Table Component Styles - Purple Theme */
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-head {
+  background-color: #faf5ff;
+}
+
+.table-head-row {
+  /* No additional styles needed */
+}
+
+.table-head-cell {
+  padding: 0.75rem 1.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b21a8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e9d5ff;
+}
+
+.table-body {
+  background-color: #ffffff;
+}
+
+.table-body-row {
+  border-bottom: 1px solid #e9d5ff;
+  transition: background-color 0.15s;
+}
+
+.table-body-row:hover {
+  background-color: #faf5ff;
+}
+
+.table-body-cell {
+  padding: 1rem 1.5rem;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: #4c1d95;
+}
+
+.table-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #a855f7;
+}

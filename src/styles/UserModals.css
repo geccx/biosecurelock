@@ -1,0 +1,532 @@
+/* AllUserModals.css - Complete Modal Styles with Purple Gradient Theme */
+
+/* ============================================
+   MODAL OVERLAY - Keep this in Modal component
+   ============================================ */
+/* This should already be in your Modal.css */
+
+/* ============================================
+   FORM ELEMENTS - Purple Theme
+   ============================================ */
+
+/* Input Fields */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+select,
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #2d3748;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: #f7fafc;
+  color: #a0aec0;
+  cursor: not-allowed;
+}
+
+input.border-red-300,
+input.border-red-500,
+select.border-red-300,
+select.border-red-500 {
+  border-color: #ef4444;
+}
+
+input.border-red-300:focus,
+input.border-red-500:focus,
+select.border-red-300:focus,
+select.border-red-500:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Disabled inputs with gray background */
+input.bg-gray-50:disabled,
+select.bg-gray-50:disabled {
+  background: #f7fafc;
+}
+
+/* Checkbox - Purple gradient when checked */
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+}
+
+input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* ============================================
+   LABELS
+   ============================================ */
+
+label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 8px;
+}
+
+label.text-gray-500 {
+  color: #718096;
+}
+
+label.text-xs {
+  font-size: 12px;
+}
+
+/* ============================================
+   ALERT BOXES - Gradient Backgrounds
+   ============================================ */
+
+/* Error Alert */
+.bg-red-50 {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 1px solid #fca5a5;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.text-red-700,
+.text-red-800 {
+  color: #991b1b;
+}
+
+.text-red-600 {
+  color: #ef4444;
+}
+
+/* Info/Blue Alert - Purple Theme */
+.bg-blue-50 {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  border: 1px solid #667eea;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.text-blue-700,
+.text-blue-800 {
+  color: #4c1d95;
+}
+
+.text-blue-600 {
+  color: #667eea;
+}
+
+/* Success/Green Alert */
+.bg-green-50 {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.text-green-900,
+.text-green-700,
+.text-green-600 {
+  color: #166534;
+}
+
+/* ============================================
+   BORDERS & ROUNDED CORNERS
+   ============================================ */
+
+.rounded {
+  border-radius: 6px;
+}
+
+.rounded-md {
+  border-radius: 8px;
+}
+
+.rounded-lg {
+  border-radius: 12px;
+}
+
+.rounded-full {
+  border-radius: 50%;
+}
+
+.border {
+  border-width: 1px;
+}
+
+.border-t {
+  border-top: 1px solid #e2e8f0;
+}
+
+.border-l-2 {
+  border-left: 2px solid;
+}
+
+.border-gray-200 {
+  border-color: #e2e8f0;
+}
+
+.border-gray-300 {
+  border-color: #e2e8f0;
+}
+
+.border-blue-200 {
+  border-color: #667eea;
+}
+
+.border-red-200 {
+  border-color: #fca5a5;
+}
+
+/* ============================================
+   CARDS WITHIN MODALS
+   ============================================ */
+
+.bg-gray-50.border.rounded-lg,
+.bg-gray-50.border.border-gray-200.rounded-lg {
+  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.bg-white.border.rounded,
+.bg-white.border.border-gray-100.rounded {
+  background: white;
+  border: 1px solid #f1f3f5;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+/* ============================================
+   GRID LAYOUTS
+   ============================================ */
+
+.grid {
+  display: grid;
+}
+
+.grid-cols-1 {
+  grid-template-columns: repeat(1, 1fr);
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.gap-4 {
+  gap: 16px;
+}
+
+.gap-6 {
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .md\:grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ============================================
+   FLEX UTILITIES
+   ============================================ */
+
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-3 {
+  gap: 12px;
+}
+
+/* ============================================
+   SPACING
+   ============================================ */
+
+.space-y-1 > * + * { margin-top: 4px; }
+.space-y-2 > * + * { margin-top: 8px; }
+.space-y-3 > * + * { margin-top: 12px; }
+.space-y-4 > * + * { margin-top: 16px; }
+.space-y-6 > * + * { margin-top: 24px; }
+
+.p-2 { padding: 8px; }
+.p-3 { padding: 12px; }
+.p-4 { padding: 16px; }
+
+.px-3 { padding-left: 12px; padding-right: 12px; }
+.px-4 { padding-left: 16px; padding-right: 16px; }
+
+.py-2 { padding-top: 8px; padding-bottom: 8px; }
+.py-3 { padding-top: 12px; padding-bottom: 12px; }
+.py-4 { padding-top: 16px; padding-bottom: 16px; }
+.py-8 { padding-top: 32px; padding-bottom: 32px; }
+.py-12 { padding-top: 48px; padding-bottom: 48px; }
+
+.pt-4 { padding-top: 16px; }
+.pl-6 { padding-left: 24px; }
+
+.mb-1 { margin-bottom: 4px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-4 { margin-bottom: 16px; }
+
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-4 { margin-top: 16px; }
+
+.ml-2 { margin-left: 8px; }
+.mr-2 { margin-right: 8px; }
+
+/* ============================================
+   TEXT UTILITIES
+   ============================================ */
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+
+.text-xs { font-size: 12px; }
+.text-sm { font-size: 14px; }
+
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+.capitalize { text-transform: capitalize; }
+
+.text-gray-400 { color: #cbd5e0; }
+.text-gray-500 { color: #a0aec0; }
+.text-gray-600 { color: #718096; }
+.text-gray-700 { color: #4a5568; }
+.text-gray-900 { color: #1a202c; }
+
+.font-mono {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+button.text-blue-600,
+button.text-red-600,
+button.text-red-800 {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+button.text-blue-600 {
+  color: #667eea;
+}
+
+button.text-blue-600:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+}
+
+button.text-red-600,
+button.text-red-800 {
+  color: #ef4444;
+}
+
+button.text-red-600:hover,
+button.text-red-800:hover {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+
+/* ============================================
+   LOADING SPINNER
+   ============================================ */
+
+.w-6 { width: 24px; height: 24px; }
+.w-8 { width: 32px; height: 32px; }
+.w-16 { width: 64px; height: 64px; }
+
+.border-4 {
+  border-width: 4px;
+}
+
+.border-blue-600 {
+  border-color: #667eea;
+}
+
+.border-t-transparent {
+  border-top-color: transparent;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   IMAGES
+   ============================================ */
+
+.h-6 { height: 24px; }
+.h-8 { height: 32px; }
+.h-16 { height: 64px; }
+
+.object-cover {
+  object-fit: cover;
+}
+
+/* ============================================
+   FOCUS STATES
+   ============================================ */
+
+.focus\:outline-none:focus {
+  outline: none;
+}
+
+.focus\:ring-2:focus {
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.focus\:ring-blue-500:focus {
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* ============================================
+   SCHEDULE-SPECIFIC STYLES
+   ============================================ */
+
+.mb-4.p-4.border.border-gray-200.rounded-lg.bg-gray-50 {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+/* ============================================
+   SHADOW UTILITIES
+   ============================================ */
+
+.shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================
+   WIDTH UTILITIES
+   ============================================ */
+
+.w-full {
+  width: 100%;
+}
+
+/* ============================================
+   WHITESPACE
+   ============================================ */
+
+.whitespace-nowrap {
+  white-space: nowrap;
+}
+
+/* ============================================
+   MISCELLANEOUS
+   ============================================ */
+
+.block {
+  display: block;
+}
+
+.inputMode-numeric {
+  input-mode: numeric;
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR
+   ============================================ */
+
+.space-y-4::-webkit-scrollbar {
+  width: 6px;
+}
+
+.space-y-4::-webkit-scrollbar-track {
+  background: rgba(241, 243, 245, 0.3);
+  border-radius: 3px;
+}
+
+.space-y-4::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 3px;
+}
+
+.space-y-4::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+
+@media (max-width: 768px) {
+  .md\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .md\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+}

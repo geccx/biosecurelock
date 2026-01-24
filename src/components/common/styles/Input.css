@@ -1,0 +1,57 @@
+/* Input Component Styles - Purple Theme */
+
+.input-wrapper {
+  width: 100%;
+}
+
+.input-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b21a8;
+  margin-bottom: 0.25rem;
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d8b4fe;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+  background-color: #faf5ff;
+  color: #4c1d95;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #9333ea;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+  background-color: #ffffff;
+}
+
+.input-field:disabled {
+  background-color: #f3e8ff;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.input-field::placeholder {
+  color: #c084fc;
+}
+
+/* Error State */
+.input-field.input-error {
+  border-color: #ef4444;
+}
+
+.input-field.input-error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.input-error-message {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: #dc2626;
+}
