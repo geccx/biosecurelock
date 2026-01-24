@@ -55,7 +55,7 @@ export function LoginPage({ onLogin, isLoading = false, error: externalError }: 
           </div>
           <h1 className="title">BioSecureLock</h1>
           <p className="subtitle">
-            Advanced Biometric Laboratory Access Control System
+            An IoT-Based Biometric Laboratory Smart Locking System with Blockchain Technology
           </p>
 
           {/* Security Badges */}
