@@ -55,21 +55,17 @@ export function AdminAccessLogs() {
   const [loading, setLoading] = useState(true);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [tuyaLoading, setTuyaLoading] = useState(false);
-  // pagination for system logs
-const SYSTEM_LOG_LIMIT = 20;
-const [systemLogPage, setSystemLogPage] = useState(0);
-const [hasMoreSystemLogs, setHasMoreSystemLogs] = useState(true);
-useEffect(() => {
-  const loadAllData = async () => {
-    await Promise.all([
-      fetchData(),
-      fetchSystemLogs(0, false),
-      fetchTuyaUnlockingHistory(),
-    ]);
-  };
-  loadAllData();
-}, []);
 
+  useEffect(() => {
+    const loadAllData = async () => {
+      await Promise.all([
+        fetchData(),
+        fetchSystemLogs(),
+        fetchTuyaUnlockingHistory(),
+      ]);
+    };
+    loadAllData();
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -104,57 +100,43 @@ useEffect(() => {
     }
   };
 
-const fetchSystemLogs = async (page = 0, append = false) => {
-  setActivitiesLoading(true);
-  try {
-    const response = await logsService.getSystemLogs({
-      limit: SYSTEM_LOG_LIMIT,
-      offset: page * SYSTEM_LOG_LIMIT,
-    });
+  const fetchSystemLogs = async () => {
+    setActivitiesLoading(true);
+    try {
+      const response = await logsService.getSystemLogs({ limit: 100 });
+      if (response.success && response.data) {
+        setSystemLogs(
+          response.data.map((log) => {
+            // Extract eventDescription from details if it exists
+            const details = log.details || {};
+            const eventDescription =
+              (details.eventDescription as string) ||
+              (details.description as string) ||
+              log.eventType ||
+              "N/A";
 
-    if (response.success && response.data) {
-      const mappedLogs = response.data.map((log) => {
-        const details = log.details || {};
-        const eventDescription =
-          (details.eventDescription as string) ||
-          (details.description as string) ||
-          log.eventType ||
-          "N/A";
-
-        return {
-          id: log.id.toString(),
-          type: log.eventType || "system_log",
-          activityType: log.eventType || "System Activity",
-          userId: log.userId?.toString() || "unknown",
-          username: log.username || "Unknown",
-          role:
-            log.role ||
-            (details.role as string) ||
-            (details.userLevel as string) ||
-            null,
-          timestamp: new Date(log.timestamp),
-          txId: null,
-          details,
-          eventType: log.eventType || "unknown",
-          eventDescription,
-        };
-      });
-
-      setSystemLogs((prev) =>
-        append ? [...prev, ...mappedLogs] : mappedLogs
-      );
-
-      // if returned logs < limit → no more old logs
-      if (mappedLogs.length < SYSTEM_LOG_LIMIT) {
-        setHasMoreSystemLogs(false);
+            return {
+              id: log.id.toString(),
+              type: log.eventType || "system_log",
+              activityType: log.eventType || "System Activity",
+              userId: log.userId?.toString() || "unknown",
+              username: log.username || "Unknown",
+              role: log.role || (details.role as string) || (details.userLevel as string) || null,
+              timestamp: new Date(log.timestamp),
+              txId: null,
+              details: details,
+              eventType: log.eventType || "unknown",
+              eventDescription: eventDescription,
+            };
+          })
+        );
       }
+    } catch (error) {
+      console.error("Failed to fetch system logs:", error);
+    } finally {
+      setActivitiesLoading(false);
     }
-  } catch (error) {
-    console.error("Failed to fetch system logs:", error);
-  } finally {
-    setActivitiesLoading(false);
-  }
-};
+  };
 
   const fetchTuyaUnlockingHistory = async () => {
     setTuyaLoading(true);
@@ -649,25 +631,7 @@ const fetchSystemLogs = async (page = 0, append = false) => {
               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : systemLogs.length > 0 ? (
-            <>
-  <Table data={systemLogs} columns={systemLogColumns} />
-
-  {hasMoreSystemLogs && (
-    <div className="flex justify-center mt-4">
-      <button
-        onClick={() => {
-          const nextPage = systemLogPage + 1;
-          setSystemLogPage(nextPage);
-          fetchSystemLogs(nextPage, true);
-        }}
-        className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800"
-      >
-        Load older logs
-      </button>
-    </div>
-  )}
-</>
-
+            <Table data={systemLogs} columns={systemLogColumns} />
           ) : (
             <p className="text-center text-gray-500 py-8">
               No system logs found
