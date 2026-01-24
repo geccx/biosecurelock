@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { PlusIcon, DownloadIcon, FileTextIcon, FileSpreadsheetIcon, TrashIcon } from "lucide-react";
+import {
+  PlusIcon,
+  DownloadIcon,
+  FileTextIcon,
+  FileSpreadsheetIcon,
+  TrashIcon,
+} from "lucide-react";
 import { Card } from "../../components/common/Card";
 import { Button } from "../../components/common/Button";
 import { Badge } from "../../components/common/Badge";
@@ -26,10 +32,22 @@ export function ScheduleManagement() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [laboratories, setLaboratories] = useState<Laboratory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false); // create
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false); // update
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [scheduleToDelete, setScheduleToDelete] = useState<Schedule | null>(null);
+
+  // Selected schedule
+  const [scheduleToDelete, setScheduleToDelete] = useState<Schedule | null>(
+    null
+  );
+  const [scheduleToUpdate, setScheduleToUpdate] = useState<Schedule | null>(
+    null
+  );
+
+  // Form data
   const [formData, setFormData] = useState({
     labName: "",
     teacherId: "",
@@ -37,6 +55,8 @@ export function ScheduleManagement() {
     endTime: "",
     subject: "",
   });
+
+  // Export states
   const [exportStartDate, setExportStartDate] = useState("");
   const [exportEndDate, setExportEndDate] = useState("");
   const [exportFormat, setExportFormat] = useState<"pdf" | "csv">("pdf");
@@ -54,21 +74,20 @@ export function ScheduleManagement() {
       ]);
 
       if (schedulesRes.success && schedulesRes.data) {
-setSchedules(
-  schedulesRes.data.map((s) => ({
-    id: s.id,
-    labName: s.labName,
-    teacherId: s.teacherId,
-    teacherName: s.teacherName,
-    startTime: new Date(s.startTime), // convert local string to Date for display
-    endTime: new Date(s.endTime),
-    subject: s.subject,
-    status: s.status,
-    createdBy: s.createdBy || "",
-    createdAt: new Date(s.createdAt),
-  }))
-);
-
+        setSchedules(
+          schedulesRes.data.map((s) => ({
+            id: s.id,
+            labName: s.labName,
+            teacherId: s.teacherId,
+            teacherName: s.teacherName,
+            startTime: new Date(s.startTime),
+            endTime: new Date(s.endTime),
+            subject: s.subject,
+            status: s.status,
+            createdBy: s.createdBy || "",
+            createdAt: new Date(s.createdAt),
+          }))
+        );
       }
 
       if (teachersRes.success && teachersRes.data) {
@@ -85,26 +104,28 @@ setSchedules(
     }
   };
 
+  // -------------------- CREATE --------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
- await labSchedulesService.create({
-  labName: formData.labName,
-  teacherId: parseInt(formData.teacherId),
-  startTime: formData.startTime, // store as local datetime string
-  endTime: formData.endTime,     // store as local datetime string
-  subject: formData.subject,
-});
+    const start = new Date(formData.startTime);
+    const end = new Date(formData.endTime);
 
+    if (start >= end) {
+      showAlert("Start time must be before end time.", "error");
+      return;
+    }
+
+    try {
+      await labSchedulesService.create({
+        labName: formData.labName,
+        teacherId: parseInt(formData.teacherId),
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        subject: formData.subject,
+      });
 
       setIsModalOpen(false);
-      setFormData({
-        labName: "",
-        teacherId: "",
-        startTime: "",
-        endTime: "",
-        subject: "",
-      });
+      setFormData({ labName: "", teacherId: "", startTime: "", endTime: "", subject: "" });
       fetchData();
       showAlert("Schedule created successfully!", "success");
     } catch (error) {
@@ -113,19 +134,67 @@ setSchedules(
     }
   };
 
-  // Open delete confirmation modal
+  // -------------------- UPDATE --------------------
+  const handleEditClick = (schedule: Schedule) => {
+    setScheduleToUpdate(schedule);
+    setFormData({
+      labName: schedule.labName,
+      teacherId: schedule.teacherId.toString(),
+      startTime: schedule.startTime.toISOString().slice(0, 16),
+      endTime: schedule.endTime.toISOString().slice(0, 16),
+      subject: schedule.subject || "",
+    });
+    setIsUpdateModalOpen(true);
+  };
+
+  const handleUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scheduleToUpdate) return;
+
+    const start = new Date(formData.startTime);
+    const end = new Date(formData.endTime);
+
+    if (start >= end) {
+      showAlert("Start time must be before end time.", "error");
+      return;
+    }
+
+    try {
+      const response = await labSchedulesService.update(scheduleToUpdate.id, {
+        labName: formData.labName,
+        teacherId: parseInt(formData.teacherId),
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        subject: formData.subject,
+      });
+
+      if (response.success) {
+        showAlert("Schedule updated successfully!", "success");
+        setIsUpdateModalOpen(false);
+        setScheduleToUpdate(null);
+        setFormData({ labName: "", teacherId: "", startTime: "", endTime: "", subject: "" });
+        fetchData();
+      } else {
+        showAlert("Failed to update schedule. Please try again.", "error");
+      }
+    } catch (error) {
+      console.error("Failed to update schedule:", error);
+      showAlert("Failed to update schedule. Please try again.", "error");
+    }
+  };
+
+  // -------------------- DELETE --------------------
   const handleDeleteClick = (schedule: Schedule) => {
     setScheduleToDelete(schedule);
     setIsDeleteModalOpen(true);
   };
 
-  // Confirm and delete schedule
   const handleDeleteConfirm = async () => {
     if (!scheduleToDelete) return;
 
     try {
       const response = await labSchedulesService.delete(scheduleToDelete.id);
-      
+
       if (response.success) {
         showAlert("Schedule deleted successfully!", "success");
         setIsDeleteModalOpen(false);
@@ -140,17 +209,14 @@ setSchedules(
     }
   };
 
-  // Cancel delete
   const handleDeleteCancel = () => {
     setIsDeleteModalOpen(false);
     setScheduleToDelete(null);
   };
 
-  // Filter schedules based on date range for export
+  // -------------------- EXPORT --------------------
   const getFilteredSchedules = (startDate: string, endDate: string) => {
-    if (!startDate && !endDate) {
-      return schedules;
-    }
+    if (!startDate && !endDate) return schedules;
 
     return schedules.filter((schedule) => {
       const scheduleDate = schedule.startTime;
@@ -158,7 +224,6 @@ setSchedules(
       const end = endDate ? new Date(endDate) : null;
 
       if (start && end) {
-        // Set end date to end of day
         end.setHours(23, 59, 59, 999);
         return scheduleDate >= start && scheduleDate <= end;
       } else if (start) {
@@ -167,196 +232,132 @@ setSchedules(
         end.setHours(23, 59, 59, 999);
         return scheduleDate <= end;
       }
-
       return true;
     });
   };
 
   const handleExport = () => {
     const filteredSchedules = getFilteredSchedules(exportStartDate, exportEndDate);
-    
+
     if (filteredSchedules.length === 0) {
       showAlert("No schedules to export. Please adjust your date filter.", "warning");
       return;
     }
 
-    if (exportFormat === "pdf") {
-      handleExportPDF(filteredSchedules);
-    } else {
-      handleExportCSV(filteredSchedules);
-    }
+    if (exportFormat === "pdf") handleExportPDF(filteredSchedules);
+    else handleExportCSV(filteredSchedules);
 
-    // Close modal after export
     setIsExportModalOpen(false);
     setExportStartDate("");
     setExportEndDate("");
   };
 
   const handleExportPDF = (schedulesToExport: Schedule[]) => {
-    try {
-      const doc = new jsPDF();
-      
-      // Add title
-      doc.setFontSize(18);
-      doc.text("Schedule Report", 14, 22);
-      
-      // Add date range info
-      doc.setFontSize(10);
-      const dateRangeText = exportStartDate || exportEndDate
-        ? `Date Range: ${exportStartDate || "All"} to ${exportEndDate || "All"}`
-        : "Date Range: All schedules";
-      doc.text(dateRangeText, 14, 30);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
-      doc.text(`Total Schedules: ${schedulesToExport.length}`, 14, 42);
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Schedule Report", 14, 22);
 
-      // Prepare table data
-      const tableData = schedulesToExport.map((schedule) => [
-        schedule.labName,
-        schedule.subject || "N/A",
-        schedule.startTime.toLocaleDateString(),
-        schedule.startTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }) +
-          " - " +
-          schedule.endTime.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        schedule.teacherName || "N/A",
-        schedule.status,
-      ]);
+    doc.setFontSize(10);
+    const dateRangeText = exportStartDate || exportEndDate
+      ? `Date Range: ${exportStartDate || "All"} to ${exportEndDate || "All"}`
+      : "Date Range: All schedules";
+    doc.text(dateRangeText, 14, 30);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
+    doc.text(`Total Schedules: ${schedulesToExport.length}`, 14, 42);
 
-      // Add table with purple theme
-      autoTable(doc, {
-        startY: 48,
-        head: [["Laboratory", "Subject", "Date", "Time", "Teacher", "Status"]],
-        body: tableData,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [147, 51, 234] }, // Purple theme
-        alternateRowStyles: { fillColor: [250, 245, 255] }, // Light purple
-      });
+    const tableData = schedulesToExport.map((schedule) => [
+      schedule.labName,
+      schedule.subject || "N/A",
+      schedule.startTime.toLocaleDateString(),
+      schedule.startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+        " - " +
+        schedule.endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      schedule.teacherName || "N/A",
+      schedule.status,
+    ]);
 
-      // Save PDF
-      const fileName = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.pdf`;
-      doc.save(fileName);
-      showAlert("PDF exported successfully!", "success");
-    } catch (error) {
-      console.error("Failed to export PDF:", error);
-      showAlert("Failed to export PDF. Please try again.", "error");
-    }
+    autoTable(doc, {
+      startY: 48,
+      head: [["Laboratory", "Subject", "Date", "Time", "Teacher", "Status"]],
+      body: tableData,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [147, 51, 234] },
+      alternateRowStyles: { fillColor: [250, 245, 255] },
+    });
+
+    const fileName = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.pdf`;
+    doc.save(fileName);
+    showAlert("PDF exported successfully!", "success");
   };
 
   const handleExportCSV = (schedulesToExport: Schedule[]) => {
-    try {
-      // CSV headers
-      const headers = [
-        "Laboratory Name",
-        "Subject",
-        "Date",
-        "Start Time",
-        "End Time",
-        "Teacher",
-        "Status",
-      ];
+    const headers = ["Laboratory Name", "Subject", "Date", "Start Time", "End Time", "Teacher", "Status"];
+    const rows = schedulesToExport.map((schedule) => [
+      schedule.labName,
+      schedule.subject || "N/A",
+      schedule.startTime.toLocaleDateString(),
+      schedule.startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      schedule.endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      schedule.teacherName || "N/A",
+      schedule.status,
+    ]);
 
-      // CSV rows
-      const rows = schedulesToExport.map((schedule) => [
-        schedule.labName,
-        schedule.subject || "N/A",
-        schedule.startTime.toLocaleDateString(),
-        schedule.startTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        schedule.endTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        schedule.teacherName || "N/A",
-        schedule.status,
-      ]);
+    const csvContent = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
 
-      // Combine headers and rows
-      const csvContent = [headers, ...rows]
-        .map((row) => row.map((cell) => `"${cell}"`).join(","))
-        .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
 
-      // Create blob and download
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      showAlert("CSV exported successfully!", "success");
-    } catch (error) {
-      console.error("Failed to export CSV:", error);
-      showAlert("Failed to export CSV. Please try again.", "error");
-    }
+    showAlert("CSV exported successfully!", "success");
   };
 
+  // -------------------- TABLE COLUMNS --------------------
   const columns = [
-    {
-      header: "Laboratory Name",
-      accessor: "labName" as keyof Schedule,
-    },
-    {
-      header: "Subject",
-      accessor: (schedule: Schedule) => schedule.subject || "N/A",
-    },
+    { header: "Laboratory Name", accessor: "labName" as keyof Schedule },
+    { header: "Subject", accessor: (s: Schedule) => s.subject || "N/A" },
     {
       header: "Time of Access",
-      accessor: (schedule: Schedule) => {
-        const startTime = schedule.startTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        const endTime = schedule.endTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        const date = schedule.startTime.toLocaleDateString();
+      accessor: (s: Schedule) => {
+        const startTime = s.startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const endTime = s.endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const date = s.startTime.toLocaleDateString();
         return `${date} ${startTime} - ${endTime}`;
       },
     },
-    {
-      header: "Teacher",
-      accessor: (schedule: Schedule) => schedule.teacherName || "N/A",
-    },
+    { header: "Teacher", accessor: (s: Schedule) => s.teacherName || "N/A" },
     {
       header: "Status",
-      accessor: (schedule: Schedule) => (
+      accessor: (s: Schedule) => (
         <Badge
           variant={
-            schedule.status === "pending"
+            s.status === "pending"
               ? "warning"
-              : schedule.status === "scheduled"
+              : s.status === "scheduled"
               ? "info"
-              : schedule.status === "completed"
+              : s.status === "completed"
               ? "success"
               : "danger"
           }
         >
-          {schedule.status}
+          {s.status}
         </Badge>
       ),
     },
     {
       header: "Actions",
-      accessor: (schedule: Schedule) => (
-        <Button
-          onClick={() => handleDeleteClick(schedule)}
-          variant="danger"
-          size="sm"
-        >
-          <TrashIcon className="icon-sm" />
-          Delete
-        </Button>
+      accessor: (s: Schedule) => (
+        <div className="actions-buttons">
+          <Button onClick={() => handleEditClick(s)} variant="secondary" size="sm">Edit</Button>
+          <Button onClick={() => handleDeleteClick(s)} variant="danger" size="sm">
+            <TrashIcon className="icon-sm" /> Delete
+          </Button>
+        </div>
       ),
     },
   ];
@@ -375,30 +376,99 @@ setSchedules(
         title="Schedule Management"
         action={
           <div className="card-actions">
-            <Button
-              onClick={() => setIsExportModalOpen(true)}
-              variant="secondary"
-              size="sm"
-              disabled={schedules.length === 0}
-            >
-              <DownloadIcon className="icon-sm" />
-              Export Schedules
+            <Button onClick={() => setIsExportModalOpen(true)} variant="secondary" size="sm" disabled={schedules.length === 0}>
+              <DownloadIcon className="icon-sm" /> Export Schedules
             </Button>
             <Button onClick={() => setIsModalOpen(true)} size="sm">
-              <PlusIcon className="icon-sm" />
-              Create Schedule
+              <PlusIcon className="icon-sm" /> Create Schedule
             </Button>
           </div>
         }
       >
-        {schedules.length > 0 ? (
-          <Table data={schedules} columns={columns} />
-        ) : (
-          <p className="schedule-empty-state">No schedules found</p>
-        )}
+        {schedules.length > 0 ? <Table data={schedules} columns={columns} /> : <p className="schedule-empty-state">No schedules found</p>}
       </Card>
 
-      {/* Delete Confirmation Modal */}
+      {/* Create, Update, Delete, Export Modals */}
+      {/* Create Schedule Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Schedule">
+        <form onSubmit={handleSubmit} className="modal-form">
+          {/* Form fields same as previous code */}
+          <div className="form-field">
+            <label className="form-field-label">Laboratory Name *</label>
+            <select
+              value={formData.labName}
+              onChange={(e) => setFormData({ ...formData, labName: e.target.value })}
+              className="form-select"
+              required
+            >
+              <option value="">Select a laboratory</option>
+              {laboratories.map((lab) => <option key={lab.id} value={lab.name}>{lab.name}</option>)}
+            </select>
+          </div>
+          <div className="form-field">
+            <label className="form-field-label">Teacher</label>
+            <select
+              value={formData.teacherId}
+              onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })}
+              className="form-select"
+              required
+            >
+              <option value="">Select a teacher</option>
+              {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+            </select>
+          </div>
+          <Input label="Subject" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} placeholder="Data Structures" />
+          <div className="modal-grid-2">
+            <Input label="Start Time" type="datetime-local" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} required />
+            <Input label="End Time" type="datetime-local" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} required />
+          </div>
+          <div className="modal-actions">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="submit">Create Schedule</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Update Schedule Modal */}
+      <Modal isOpen={isUpdateModalOpen} onClose={() => setIsUpdateModalOpen(false)} title="Update Schedule">
+        <form onSubmit={handleUpdateSubmit} className="modal-form">
+          <div className="form-field">
+            <label className="form-field-label">Laboratory Name *</label>
+            <select
+              value={formData.labName}
+              onChange={(e) => setFormData({ ...formData, labName: e.target.value })}
+              className="form-select"
+              required
+            >
+              <option value="">Select a laboratory</option>
+              {laboratories.map((lab) => <option key={lab.id} value={lab.name}>{lab.name}</option>)}
+            </select>
+          </div>
+          <div className="form-field">
+            <label className="form-field-label">Teacher</label>
+            <select
+              value={formData.teacherId}
+              onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })}
+              className="form-select"
+              required
+            >
+              <option value="">Select a teacher</option>
+              {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+            </select>
+          </div>
+          <Input label="Subject" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} placeholder="Data Structures" />
+          <div className="modal-grid-2">
+            <Input label="Start Time" type="datetime-local" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} required />
+            <Input label="End Time" type="datetime-local" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} required />
+          </div>
+          <div className="modal-actions">
+            <Button type="button" variant="secondary" onClick={() => setIsUpdateModalOpen(false)}>Cancel</Button>
+            <Button type="submit">Update Schedule</Button>
+          </div>
+        </form>
+      </Modal>
+
+       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={handleDeleteCancel}
@@ -634,3 +704,5 @@ setSchedules(
     </div>
   );
 }
+
+     
