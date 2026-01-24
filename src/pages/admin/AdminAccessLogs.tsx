@@ -146,7 +146,7 @@ export function AdminAccessLogs() {
       const startTime = endTime - 7 * 24 * 60 * 60 * 1000; // 7 days ago
 
       const response = await logsService.getTuyaUnlockingHistory({
-        page_no: 1,
+        page_no: 3,
         page_size: 100,
         start_time: startTime,
         end_time: endTime,
