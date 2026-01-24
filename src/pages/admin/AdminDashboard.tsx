@@ -26,7 +26,8 @@ import {
   type MoveRequest,
   type LabSchedule,
 } from "../../services";
-import "../../styles/AdminDashboard.css";
+import './styles/unified-styles.css';
+import './styles/component-specific.css';
 
 // Notification item interface for unified display
 interface NotificationItem {
@@ -442,7 +443,7 @@ useEffect(() => {
   };
 
    return (
-    <div className="admin-dashboard">
+    <div className="container">
       {/* Stats Grid */}
       <div className="stats-grid">
         {statCards.map((stat) => {

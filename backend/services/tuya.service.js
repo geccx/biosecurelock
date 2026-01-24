@@ -2212,106 +2212,101 @@ class TuyaService {
     return result;
   }
 
-/**
- * Get all device users aggregated from all unlock methods
- * This method fetches users from fingerprint, card, and password unlock methods
- * and deduplicates them by user_id
- *
- * @param {string} deviceId - Device ID (optional, defaults to TUYA_DEVICE_ID from env)
- * @param {object} params - Additional parameters
- * @param {number} params.page_no - Page number
- * @param {number} params.page_size - Page size
- * @returns {Promise<object>} Returns aggregated users in format: { success: true, data: [...], total: ... }
- */
-async getAllDeviceUsers(deviceId = null, params = {}) {
-  try {
-    const targetDeviceId = deviceId || process.env.TUYA_DEVICE_ID;
+  /**
+   * Get all device users aggregated from all unlock methods
+   * This method fetches users from fingerprint, card, and password unlock methods
+   * and deduplicates them by user_id
+   *
+   * @param {string} deviceId - Device ID (optional, defaults to TUYA_DEVICE_ID from env)
+   * @param {object} params - Additional parameters
+   * @param {number} params.page_no - Page number
+   * @param {number} params.page_size - Page size
+   * @returns {Promise<object>} Returns aggregated users in format: { success: true, data: [...], total: ... }
+   */
+  async getAllDeviceUsers(deviceId = null, params = {}) {
+    try {
+      const targetDeviceId = deviceId || process.env.TUYA_DEVICE_ID;
 
-    if (!targetDeviceId) {
-      throw new Error(
-        "Device ID is required. Set TUYA_DEVICE_ID in environment."
-      );
-    }
-
-    console.log(
-      `[getAllDeviceUsers] Fetching users for device: ${targetDeviceId}`
-    );
-
-    // ✅ Use v1.0 API which properly filters by unlock method
-    // GET /v1.0/smart-lock/devices/{device_id}/users
-    const unlockCodes = [
-      "unlock_fingerprint",
-      "unlock_card",
-      "unlock_password",
-    ];
-    const allUsersMap = new Map(); // Deduplicate by user_id
-
-    for (const code of unlockCodes) {
-      try {
-        console.log(
-          `[getAllDeviceUsers] Fetching users with unlock code: ${code}`
+      if (!targetDeviceId) {
+        throw new Error(
+          "Device ID is required. Set TUYA_DEVICE_ID in environment."
         );
+      }
 
-        // ✅ FIX: Use getDeviceUserInfo (v1.0) instead of getDeviceUsersById (v1.1)
-        const result = await this.getDeviceUserInfo(targetDeviceId, {
-          codes: code, // v1.0 API properly filters by this
-          page_no: params.page_no || 1,
-          page_size: params.page_size || 100,
-        });
+      console.log(
+        `[getAllDeviceUsers] Fetching users for device: ${targetDeviceId}`
+      );
 
-        // ✅ FIX: v1.0 API returns 'list', not 'records'
-        if (result && result.list && Array.isArray(result.list)) {
+      // Get users from all unlock methods
+      const unlockCodes = [
+        "unlock_fingerprint",
+        "unlock_card",
+        "unlock_password",
+      ];
+      const allUsersMap = new Map(); // Deduplicate by user_id
+
+      for (const code of unlockCodes) {
+        try {
           console.log(
-            `[getAllDeviceUsers] Found ${result.list.length} users for ${code}`
+            `[getAllDeviceUsers] Fetching users with unlock code: ${code}`
           );
 
-          // Add/merge users
-          result.list.forEach((user) => {
-            const userId = user.user_id || user.lock_user_id;
-
-            if (allUsersMap.has(userId)) {
-              // User exists, merge unlock_detail
-              const existingUser = allUsersMap.get(userId);
-              if (user.unlock_detail && Array.isArray(user.unlock_detail)) {
-                existingUser.unlock_detail = [
-                  ...(existingUser.unlock_detail || []),
-                  ...user.unlock_detail,
-                ];
-              }
-            } else {
-              // New user
-              allUsersMap.set(userId, { ...user });
-            }
+          const result = await this.getDeviceUsersById(targetDeviceId, {
+            code: code,
+            page_no: params.page_no || 1,
+            page_size: params.page_size || 100,
           });
-        } else {
-          console.log(`[getAllDeviceUsers] No users found for ${code}`);
+
+          if (result && result.records && Array.isArray(result.records)) {
+            console.log(
+              `[getAllDeviceUsers] Found ${result.records.length} users for ${code}`
+            );
+
+            // Add/merge users
+            result.records.forEach((user) => {
+              const userId = user.user_id || user.lock_user_id;
+
+              if (allUsersMap.has(userId)) {
+                // User exists, merge unlock_detail
+                const existingUser = allUsersMap.get(userId);
+                if (user.unlock_detail && Array.isArray(user.unlock_detail)) {
+                  existingUser.unlock_detail = [
+                    ...(existingUser.unlock_detail || []),
+                    ...user.unlock_detail,
+                  ];
+                }
+              } else {
+                // New user
+                allUsersMap.set(userId, { ...user });
+              }
+            });
+          }
+        } catch (error) {
+          console.warn(
+            `[getAllDeviceUsers] Failed to fetch ${code}:`,
+            error.message
+          );
+          // Continue with other codes
         }
-      } catch (error) {
-        console.warn(
-          `[getAllDeviceUsers] Failed to fetch ${code}:`,
-          error.message
-        );
-        // Continue with other codes
       }
+
+      const allUsers = Array.from(allUsersMap.values());
+      console.log(`[getAllDeviceUsers] Total unique users: ${allUsers.length}`);
+
+      return {
+        success: true,
+        data: allUsers,
+        total: allUsers.length,
+      };
+    } catch (error) {
+      console.error(`[getAllDeviceUsers] Error:`, error);
+      return {
+        success: false,
+        data: [],
+        error: error.message || "Failed to fetch device users",
+      };
     }
-
-    const allUsers = Array.from(allUsersMap.values());
-    console.log(`[getAllDeviceUsers] Total unique users: ${allUsers.length}`);
-
-    return {
-      success: true,
-      data: allUsers,
-      total: allUsers.length,
-    };
-  } catch (error) {
-    console.error(`[getAllDeviceUsers] Error:`, error);
-    return {
-      success: false,
-      data: [],
-      error: error.message || "Failed to fetch device users",
-    };
   }
-}
 
   /**
    * Query User Information on Pages
