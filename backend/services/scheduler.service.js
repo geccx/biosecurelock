@@ -56,89 +56,63 @@ class SchedulerService {
     logger.info("Scheduler service initialized");
   }
 
- // Update the checkSchedules method in scheduler.service.js
-async checkSchedules() {
-  try {
-    const now = new Date();
-    const currentDay = now.toLocaleDateString("en-US", { weekday: "long" });
-    const currentTime = now.toTimeString().split(" ")[0].substring(0, 5); // HH:MM
-
-    // Check if recurrence_type column exists first
+  // Check active schedules and auto-unlock if needed
+  async checkSchedules() {
     try {
-      const [columns] = await db.query(
-        "SHOW COLUMNS FROM lab_schedules LIKE 'recurrence_type'"
-      );
-      
-      if (columns.length === 0) {
-        logger.debug("recurrence_type column not found, skipping schedule check");
-        return;
-      }
-    } catch (checkError) {
-      logger.debug("Error checking for recurrence_type column:", checkError.message);
-      return;
-    }
+      const now = new Date();
+      const currentDay = now.toLocaleDateString("en-US", { weekday: "long" });
+      const currentTime = now.toTimeString().split(" ")[0].substring(0, 5); // HH:MM
 
-    // Get active weekly schedules for current day and time
-    const [schedules] = await db.query(
-      `SELECT s.*, u.username, u.email
-       FROM lab_schedules s
-       JOIN users u ON s.teacher_id = u.id
-       WHERE s.recurrence_type = 'weekly'
-       AND s.status = 'scheduled'
-       AND JSON_CONTAINS(s.days_of_week, ?)
-       AND TIME(s.start_time) <= ? 
-       AND TIME(s.end_time) >= ?
-       AND (s.recurrence_end_date IS NULL OR s.recurrence_end_date >= CURDATE())`,
-      [JSON.stringify(currentDay), currentTime, currentTime]
-    );
-
-    if (schedules.length === 0) {
-      return;
-    }
-
-    logger.info(`Found ${schedules.length} active schedules for ${currentDay} at ${currentTime}`);
-
-    for (const schedule of schedules) {
-      // Check if already processed in the last minute (prevent duplicates)
-      const [recentLogs] = await db.query(
-        `SELECT * FROM access_logs 
-         WHERE user_id = ? 
-         AND access_method = 'scheduled_access'
-         AND accessed_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE)`,
-        [schedule.teacher_id]
+      // Get active schedules for current day and time
+      const [schedules] = await db.query(
+        `SELECT s.*, u.username, u.fabric_identity
+                FROM access_schedules s
+                JOIN users u ON s.user_id = u.id
+                WHERE s.is_active = true
+                AND JSON_CONTAINS(s.days_of_week, '"${currentDay}"')
+                AND s.start_time <= ? 
+                AND s.end_time >= ?`,
+        [currentTime, currentTime]
       );
 
-      if (recentLogs.length > 0) {
-        continue; // Already processed
-      }
+      for (const schedule of schedules) {
+        // Check if user has permission via Fabric
+        const permission = await fabricService.checkAccessPermission(
+          schedule.user_id,
+          "unlock"
+        );
 
-      // Log the scheduled access
-      await db.query(
-        `INSERT INTO access_logs 
-         (user_id, access_method, access_type, success, device_response) 
-         VALUES (?, 'scheduled_access', 'schedule_active', true, ?)`,
-        [
-          schedule.teacher_id,
-          JSON.stringify({
+        if (!permission.allowed) {
+          logger.warn("User does not have unlock permission", {
+            userId: schedule.user_id,
             scheduleId: schedule.id,
-            labName: schedule.lab_name,
-            subject: schedule.subject,
-            day: currentDay,
-            time: currentTime
-          })
-        ]
-      );
+          });
+          continue;
+        }
 
-      logger.info("Scheduled access logged", {
-        scheduleId: schedule.id,
-        teacherId: schedule.teacher_id,
-        labName: schedule.lab_name
-      });
+        // Check if already unlocked in the last minute (prevent duplicates)
+        const [recentLogs] = await db.query(
+          `SELECT * FROM access_logs 
+                    WHERE user_id = ? 
+                    AND access_method = 'auto_schedule'
+                    AND accessed_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE)`,
+          [schedule.user_id]
+        );
+
+        if (recentLogs.length > 0) {
+          continue; // Already processed
+        }
+
+        // Auto-unlock if enabled
+        if (schedule.auto_unlock) {
+          await this.performAutoUnlock(schedule);
+        }
+      }
+    } catch (error) {
+      logger.error("Error checking schedules:", error);
     }
-  } catch (error) {
-    logger.error("Error checking schedules:", error);
   }
-}
+
   // Perform automatic unlock based on schedule
   async performAutoUnlock(schedule) {
     // Skip if Tuya credentials not configured
