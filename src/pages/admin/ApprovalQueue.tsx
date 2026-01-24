@@ -10,7 +10,7 @@ import {
   type LabSchedule,
 } from "../../services";
 import { useAlert } from "../../contexts/AlertContext";
-import "../../styles/ApprovalQueue.css";
+
 
 export function ApprovalQueue() {
   const { showAlert } = useAlert();

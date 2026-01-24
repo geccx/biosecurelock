@@ -3,7 +3,6 @@ import { Modal } from "../common/Modal";
 import { Badge } from "../common/Badge";
 import { Button } from "../common/Button";
 import { usersService, type BackendUser } from "../../services";
-import '../../styles/UserModals.css';
 interface ViewLocalUserModalProps {
   isOpen: boolean;
   onClose: () => void;

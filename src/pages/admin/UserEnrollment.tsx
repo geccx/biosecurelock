@@ -9,7 +9,6 @@ import {
   type BackendUser,
 } from "../../services";
 import { useAlert } from "../../contexts/AlertContext";
-import "../../styles/UserEnrollment.css";
 
 export function UserEnrollment() {
   const { showAlert } = useAlert();

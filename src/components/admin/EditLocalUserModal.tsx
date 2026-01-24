@@ -3,7 +3,7 @@ import { Modal } from "../common/Modal";
 import { Button } from "../common/Button";
 import { Input } from "../common/Input";
 import { usersService, type BackendUser } from "../../services";
-import '../../styles/UserModals.css';
+
 
 interface EditLocalUserModalProps {
   isOpen: boolean;

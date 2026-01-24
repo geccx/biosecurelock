@@ -26,7 +26,7 @@ import {
   type MoveRequest,
   type LabSchedule,
 } from "../../services";
-import "../../styles/AdminDashboard.css";
+
 
 // Notification item interface for unified display
 interface NotificationItem {

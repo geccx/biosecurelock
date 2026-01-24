@@ -21,7 +21,7 @@ import {
 } from "../../services";
 import type { Device } from "../../services/devices.service";
 import { useAlert } from "../../contexts/AlertContext";
-import "../../styles/SystemConfig.css";
+
 
 export function SystemConfig() {
   const { showAlert } = useAlert();

@@ -1,5 +1,5 @@
 import React from "react";
-import "./styles/Badge.css";
+
 interface BadgeProps {
   children: React.ReactNode;
   variant?: "success" | "warning" | "danger" | "info" | "default";

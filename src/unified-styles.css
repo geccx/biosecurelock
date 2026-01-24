@@ -1,0 +1,366 @@
+/* ============================================
+   BIOSECURELOCK - UNIFIED STYLES
+   Purple Gradient Theme (#667eea to #764ba2)
+   Works alongside Tailwind CSS
+   ============================================ */
+
+:root {
+  /* Purple Theme */
+  --primary: #667eea;
+  --primary-dark: #764ba2;
+  --purple-500: #a855f7;
+  --purple-600: #9333ea;
+  --purple-700: #7c3aed;
+  
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+  
+  /* Radius */
+  --radius: 12px;
+  --radius-lg: 16px;
+  
+  /* Shadow */
+  --shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --shadow-purple: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* ============================================
+   CARDS - Consistent across all components
+   ============================================ */
+.card,
+.dashboard-card,
+.user-management .card,
+.space-y-6 > div {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow);
+  border: 1px solid #e5e7eb;
+  margin-bottom: var(--space-2xl);
+}
+
+.card:hover,
+.dashboard-card:hover {
+  box-shadow: var(--shadow-purple);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+/* ============================================
+   BUTTONS - Purple gradient primary
+   ============================================ */
+button[class*="bg-blue"],
+.btn-primary,
+.user-management .btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+  color: white !important;
+  box-shadow: var(--shadow-purple);
+  border: none !important;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+button[class*="bg-blue"]:hover:not(:disabled),
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+button[class*="bg-green"] {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: none !important;
+}
+
+button[class*="bg-red"],
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  border: none !important;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ============================================
+   INPUTS - Purple focus
+   ============================================ */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+select,
+textarea {
+  border: 2px solid #e5e7eb;
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--purple-500);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239333ea' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 3rem;
+  appearance: none;
+}
+
+/* ============================================
+   BADGES - Gradient backgrounds
+   ============================================ */
+span[class*="bg-green"] {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+  color: #065f46 !important;
+  border: 1px solid #10b981 !important;
+  padding: 0.5rem 0.875rem !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+}
+
+span[class*="bg-red"] {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+  color: #b91c1c !important;
+  border: 1px solid #ef4444 !important;
+  padding: 0.5rem 0.875rem !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+}
+
+span[class*="bg-yellow"] {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  color: #78350f !important;
+  border: 1px solid #f59e0b !important;
+  padding: 0.5rem 0.875rem !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+}
+
+span[class*="bg-blue"] {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%) !important;
+  color: #6b21a8 !important;
+  border: 1px solid #a855f7 !important;
+  padding: 0.5rem 0.875rem !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+}
+
+span[class*="bg-gray"] {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e5e7eb 100%) !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db !important;
+  padding: 0.5rem 0.875rem !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+}
+
+/* ============================================
+   TABLES - Purple header
+   ============================================ */
+thead {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+}
+
+thead th {
+  color: white;
+  padding: 1rem 1.25rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+thead th:first-child {
+  border-top-left-radius: var(--radius);
+}
+
+thead th:last-child {
+  border-top-right-radius: var(--radius);
+}
+
+tbody tr:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+}
+
+tbody td {
+  padding: 1rem 1.25rem;
+}
+
+/* ============================================
+   STATS CARDS
+   ============================================ */
+.stat-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow);
+  border: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-purple);
+}
+
+.icon-purple,
+.icon-blue {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+}
+
+.icon-green {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.icon-orange {
+  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+  color: white;
+}
+
+.icon-red {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+/* ============================================
+   ALERTS - Gradient backgrounds
+   ============================================ */
+div[class*="bg-red-50"] {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+  border: 1px solid #ef4444 !important;
+  border-radius: var(--radius) !important;
+}
+
+div[class*="bg-green-50"] {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+  border: 1px solid #10b981 !important;
+  border-radius: var(--radius) !important;
+}
+
+div[class*="bg-yellow-50"] {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  border: 1px solid #f59e0b !important;
+  border-radius: var(--radius) !important;
+}
+
+div[class*="bg-blue-50"] {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%) !important;
+  border: 1px solid #a855f7 !important;
+  border-radius: var(--radius) !important;
+}
+
+/* ============================================
+   TABS
+   ============================================ */
+.tab-button {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #6b7280;
+  transition: all 0.3s ease;
+}
+
+.tab-button:hover {
+  color: var(--purple-600);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+}
+
+.tab-button.active {
+  color: white;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow-purple);
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c084fc;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a855f7;
+}
+
+/* ============================================
+   LOADING SPINNER
+   ============================================ */
+.loading-spinner,
+div[class*="animate-spin"] {
+  border-color: var(--purple-600) !important;
+  border-top-color: transparent !important;
+}
+
+.w-4.h-4[class*="animate-spin"] {
+  border-width: 2px !important;
+  border-color: white !important;
+  border-top-color: transparent !important;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   TEXT COLORS
+   ============================================ */
+.text-blue-600,
+.text-blue-700,
+.text-blue-800 {
+  color: var(--purple-700) !important;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+  .card,
+  .dashboard-card {
+    padding: var(--space-lg);
+  }
+  
+  tbody td,
+  thead th {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  button {
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+  }
+}
