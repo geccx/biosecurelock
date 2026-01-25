@@ -42,44 +42,56 @@ export function ScheduleManagement() {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const [schedulesRes, teachersRes, laboratoriesRes] = await Promise.all([
-        labSchedulesService.getAll(),
-        usersService.getTeachers(),
-        laboratoriesService.getAll(),
-      ]);
+const fetchData = async () => {
+  try {
+    const [schedulesRes, teachersRes, laboratoriesRes] = await Promise.all([
+      labSchedulesService.getAll(),
+      usersService.getTeachers(),
+      laboratoriesService.getAll(),
+    ]);
 
-      if (schedulesRes.success && schedulesRes.data) {
-        setSchedules(
-          schedulesRes.data.map((s) => ({
+    if (schedulesRes.success && schedulesRes.data) {
+      setSchedules(
+        schedulesRes.data.map((s) => {
+          // Parse datetime strings as local time, not UTC
+          const parseLocalDateTime = (dateTimeStr: string) => {
+            // dateTimeStr format: "2026-01-25T16:20:00.000Z" or "2026-01-25 16:20:00"
+            const str = dateTimeStr.replace(' ', 'T').replace('Z', '');
+            const [datePart, timePart] = str.split('T');
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hour, min, sec] = timePart.split(':').map(Number);
+            return new Date(year, month - 1, day, hour, min, sec || 0);
+          };
+
+          return {
             id: s.id,
             labName: s.labName,
             teacherId: s.teacherId,
             teacherName: s.teacherName,
-            startTime: new Date(s.startTime),
-            endTime: new Date(s.endTime),
+            startTime: parseLocalDateTime(s.startTime),
+            endTime: parseLocalDateTime(s.endTime),
             subject: s.subject,
             status: s.status,
             createdBy: s.createdBy || "",
             createdAt: new Date(s.createdAt),
-          }))
-        );
-      }
-
-      if (teachersRes.success && teachersRes.data) {
-        setTeachers(teachersRes.data);
-      }
-
-      if (laboratoriesRes.success && laboratoriesRes.data) {
-        setLaboratories(laboratoriesRes.data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    } finally {
-      setLoading(false);
+          };
+        })
+      );
     }
-  };
+
+    if (teachersRes.success && teachersRes.data) {
+      setTeachers(teachersRes.data);
+    }
+
+    if (laboratoriesRes.success && laboratoriesRes.data) {
+      setLaboratories(laboratoriesRes.data);
+    }
+  } catch (error) {
+    console.error("Failed to fetch data:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -275,22 +287,17 @@ const handleSubmit = async (e: React.FormEvent) => {
    {
   header: "Time of Access",
   accessor: (schedule: Schedule) => {
-    // The database stores in local time (Asia/Manila)
-    // Parse without timezone conversion
-    const startDate = new Date(schedule.startTime + '+08:00'); // Add Manila timezone
-    const endDate = new Date(schedule.endTime + '+08:00');
-    
-    const startTime = startDate.toLocaleTimeString('en-PH', {
+    const startTime = schedule.startTime.toLocaleTimeString('en-US', {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     });
-    const endTime = endDate.toLocaleTimeString('en-PH', {
+    const endTime = schedule.endTime.toLocaleTimeString('en-US', {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     });
-    const date = startDate.toLocaleDateString('en-PH');
+    const date = schedule.startTime.toLocaleDateString('en-US');
     return `${date} ${startTime} - ${endTime}`;
   },
 },
