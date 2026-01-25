@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { labSchedulesService, type LabSchedule } from "../../services";
 import { useAuth } from "../../hooks/useAuth";
@@ -67,11 +67,23 @@ export function ScheduleCalendar({
     }
   };
 
+  // Helper function to parse datetime string as local time
+  const parseLocalDateTime = (dateTimeStr: string): Date => {
+    // Input: "2026-01-25T16:20:00" or "2026-01-25 16:20:00"
+    const str = dateTimeStr.replace(' ', 'T').split('.')[0]; // Remove milliseconds if present
+    const [datePart, timePart] = str.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, min, sec] = timePart.split(':').map(Number);
+    return new Date(year, month - 1, day, hour, min, sec || 0);
+  };
+
   // Transform schedules into calendar events
   const events: ScheduleEvent[] = useMemo(() => {
     return schedules.map((schedule) => {
-      const startTime = parseISO(schedule.startTime);
-      const endTime = parseISO(schedule.endTime);
+      // Parse as local time instead of ISO
+      const startTime = parseLocalDateTime(schedule.startTime);
+      const endTime = parseLocalDateTime(schedule.endTime);
+      
       const timeStr = `${format(startTime, "h:mm a")} - ${format(endTime, "h:mm a")}`;
       
       // For admin, techsupport, and teachers, show teacher name, subject, and time
