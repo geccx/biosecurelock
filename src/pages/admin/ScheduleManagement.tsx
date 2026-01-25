@@ -14,10 +14,23 @@ import {
   type Teacher,
   type Laboratory,
 } from "../../services";
-import type { Schedule } from "../../types";
 import { useAlert } from "../../contexts/AlertContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+// Update the Schedule interface to use strings instead of Date objects
+interface Schedule {
+  id: string;
+  labName: string;
+  teacherId: string;
+  teacherName: string;
+  startTime: string; // Keep as string
+  endTime: string;   // Keep as string
+  subject?: string;
+  status: "scheduled" | "completed" | "cancelled" | "pending";
+  createdBy?: string;
+  createdAt: string;
+}
 
 export function ScheduleManagement() {
   const { showAlert } = useAlert();
@@ -42,84 +55,90 @@ export function ScheduleManagement() {
     fetchData();
   }, []);
 
-const fetchData = async () => {
-  try {
-    const [schedulesRes, teachersRes, laboratoriesRes] = await Promise.all([
-      labSchedulesService.getAll(),
-      usersService.getTeachers(),
-      laboratoriesService.getAll(),
-    ]);
+  const fetchData = async () => {
+    try {
+      const [schedulesRes, teachersRes, laboratoriesRes] = await Promise.all([
+        labSchedulesService.getAll(),
+        usersService.getTeachers(),
+        laboratoriesService.getAll(),
+      ]);
 
-    if (schedulesRes.success && schedulesRes.data) {
-      setSchedules(
-        schedulesRes.data.map((s) => {
-          // Parse datetime strings as local time, not UTC
-          const parseLocalDateTime = (dateTimeStr: string) => {
-            // dateTimeStr format: "2026-01-25T16:20:00.000Z" or "2026-01-25 16:20:00"
-            const str = dateTimeStr.replace(' ', 'T').replace('Z', '');
-            const [datePart, timePart] = str.split('T');
-            const [year, month, day] = datePart.split('-').map(Number);
-            const [hour, min, sec] = timePart.split(':').map(Number);
-            return new Date(year, month - 1, day, hour, min, sec || 0);
-          };
-
-          return {
+      if (schedulesRes.success && schedulesRes.data) {
+        setSchedules(
+          schedulesRes.data.map((s) => ({
             id: s.id,
             labName: s.labName,
             teacherId: s.teacherId,
             teacherName: s.teacherName,
-            startTime: parseLocalDateTime(s.startTime),
-            endTime: parseLocalDateTime(s.endTime),
+            startTime: s.startTime, // Keep as string - no conversion
+            endTime: s.endTime,     // Keep as string - no conversion
             subject: s.subject,
             status: s.status,
             createdBy: s.createdBy || "",
-            createdAt: new Date(s.createdAt),
-          };
-        })
-      );
+            createdAt: s.createdAt,
+          }))
+        );
+      }
+
+      if (teachersRes.success && teachersRes.data) {
+        setTeachers(teachersRes.data);
+      }
+
+      if (laboratoriesRes.success && laboratoriesRes.data) {
+        setLaboratories(laboratoriesRes.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    if (teachersRes.success && teachersRes.data) {
-      setTeachers(teachersRes.data);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await labSchedulesService.create({
+        labName: formData.labName,
+        teacherId: parseInt(formData.teacherId),
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        subject: formData.subject,
+      });
+
+      setIsModalOpen(false);
+      setFormData({
+        labName: "",
+        teacherId: "",
+        startTime: "",
+        endTime: "",
+        subject: "",
+      });
+      fetchData();
+    } catch (error) {
+      console.error("Failed to create schedule:", error);
+      showAlert("Failed to create schedule. Please try again.", "error");
     }
+  };
 
-    if (laboratoriesRes.success && laboratoriesRes.data) {
-      setLaboratories(laboratoriesRes.data);
-    }
-  } catch (error) {
-    console.error("Failed to fetch data:", error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  try {
-    // Don't convert to ISO - send the datetime-local values directly
-    // The backend should treat these as local times
-    await labSchedulesService.create({
-      labName: formData.labName,
-      teacherId: parseInt(formData.teacherId),
-      startTime: formData.startTime, // Send as-is: "2026-01-25T16:20"
-      endTime: formData.endTime,     // Send as-is: "2026-01-26T01:00"
-      subject: formData.subject,
-    });
-
-    setIsModalOpen(false);
-    setFormData({
-      labName: "",
-      teacherId: "",
-      startTime: "",
-      endTime: "",
-      subject: "",
-    });
-    fetchData();
-  } catch (error) {
-    console.error("Failed to create schedule:", error);
-    showAlert("Failed to create schedule. Please try again.", "error");
-  }
-};
+  // Helper function to format datetime string
+  const formatDateTime = (dateTimeStr: string) => {
+    // Input: "2026-01-25T16:20:00" or "2026-01-25 16:20:00"
+    const str = dateTimeStr.replace(' ', 'T').split('.')[0]; // Remove milliseconds if present
+    const [datePart, timePart] = str.split('T');
+    
+    // Format date
+    const [year, month, day] = datePart.split('-');
+    const formattedDate = `${month}/${day}/${year}`;
+    
+    // Format time to 12-hour with AM/PM
+    const [hour, minute] = timePart.split(':');
+    const hourNum = parseInt(hour);
+    const ampm = hourNum >= 12 ? 'PM' : 'AM';
+    const hour12 = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
+    const formattedTime = `${hour12.toString().padStart(2, '0')}:${minute} ${ampm}`;
+    
+    return { date: formattedDate, time: formattedTime };
+  };
 
   // Filter schedules based on date range for export
   const getFilteredSchedules = (startDate: string, endDate: string) => {
@@ -128,19 +147,16 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
 
     return schedules.filter((schedule) => {
-      const scheduleDate = schedule.startTime;
-      const start = startDate ? new Date(startDate) : null;
-      const end = endDate ? new Date(endDate) : null;
+      const scheduleDateStr = schedule.startTime.split(' ')[0].split('T')[0]; // Get date part
+      const start = startDate ? startDate : null;
+      const end = endDate ? endDate : null;
 
       if (start && end) {
-        // Set end date to end of day
-        end.setHours(23, 59, 59, 999);
-        return scheduleDate >= start && scheduleDate <= end;
+        return scheduleDateStr >= start && scheduleDateStr <= end;
       } else if (start) {
-        return scheduleDate >= start;
+        return scheduleDateStr >= start;
       } else if (end) {
-        end.setHours(23, 59, 59, 999);
-        return scheduleDate <= end;
+        return scheduleDateStr <= end;
       }
 
       return true;
@@ -161,7 +177,6 @@ const handleSubmit = async (e: React.FormEvent) => {
       handleExportCSV(filteredSchedules);
     }
 
-    // Close modal after export
     setIsExportModalOpen(false);
     setExportStartDate("");
     setExportEndDate("");
@@ -171,11 +186,9 @@ const handleSubmit = async (e: React.FormEvent) => {
     try {
       const doc = new jsPDF();
       
-      // Add title
       doc.setFontSize(18);
       doc.text("Schedule Report", 14, 22);
       
-      // Add date range info
       doc.setFontSize(10);
       const dateRangeText = exportStartDate || exportEndDate
         ? `Date Range: ${exportStartDate || "All"} to ${exportEndDate || "All"}`
@@ -184,35 +197,28 @@ const handleSubmit = async (e: React.FormEvent) => {
       doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
       doc.text(`Total Schedules: ${schedulesToExport.length}`, 14, 42);
 
-      // Prepare table data
-      const tableData = schedulesToExport.map((schedule) => [
-        schedule.labName,
-        schedule.subject || "N/A",
-        schedule.startTime.toLocaleDateString(),
-        schedule.startTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }) +
-          " - " +
-          schedule.endTime.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        schedule.teacherName || "N/A",
-        schedule.status,
-      ]);
+      const tableData = schedulesToExport.map((schedule) => {
+        const start = formatDateTime(schedule.startTime);
+        const end = formatDateTime(schedule.endTime);
+        return [
+          schedule.labName,
+          schedule.subject || "N/A",
+          start.date,
+          `${start.time} - ${end.time}`,
+          schedule.teacherName || "N/A",
+          schedule.status,
+        ];
+      });
 
-      // Add table
       autoTable(doc, {
         startY: 48,
         head: [["Laboratory", "Subject", "Date", "Time", "Teacher", "Status"]],
         body: tableData,
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [59, 130, 246] }, // blue-500
+        headStyles: { fillColor: [59, 130, 246] },
         alternateRowStyles: { fillColor: [249, 250, 251] },
       });
 
-      // Save PDF
       const fileName = `schedules_${exportStartDate || "all"}_${exportEndDate || "all"}_${Date.now()}.pdf`;
       doc.save(fileName);
       showAlert("PDF exported successfully!", "success");
@@ -224,7 +230,6 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   const handleExportCSV = (schedulesToExport: Schedule[]) => {
     try {
-      // CSV headers
       const headers = [
         "Laboratory Name",
         "Subject",
@@ -235,29 +240,24 @@ const handleSubmit = async (e: React.FormEvent) => {
         "Status",
       ];
 
-      // CSV rows
-      const rows = schedulesToExport.map((schedule) => [
-        schedule.labName,
-        schedule.subject || "N/A",
-        schedule.startTime.toLocaleDateString(),
-        schedule.startTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        schedule.endTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        schedule.teacherName || "N/A",
-        schedule.status,
-      ]);
+      const rows = schedulesToExport.map((schedule) => {
+        const start = formatDateTime(schedule.startTime);
+        const end = formatDateTime(schedule.endTime);
+        return [
+          schedule.labName,
+          schedule.subject || "N/A",
+          start.date,
+          start.time,
+          end.time,
+          schedule.teacherName || "N/A",
+          schedule.status,
+        ];
+      });
 
-      // Combine headers and rows
       const csvContent = [headers, ...rows]
         .map((row) => row.map((cell) => `"${cell}"`).join(","))
         .join("\n");
 
-      // Create blob and download
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -284,23 +284,14 @@ const handleSubmit = async (e: React.FormEvent) => {
       header: "Subject",
       accessor: (schedule: Schedule) => schedule.subject || "N/A",
     },
-   {
-  header: "Time of Access",
-  accessor: (schedule: Schedule) => {
-    const startTime = schedule.startTime.toLocaleTimeString('en-US', {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-    const endTime = schedule.endTime.toLocaleTimeString('en-US', {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-    const date = schedule.startTime.toLocaleDateString('en-US');
-    return `${date} ${startTime} - ${endTime}`;
-  },
-},
+    {
+      header: "Time of Access",
+      accessor: (schedule: Schedule) => {
+        const start = formatDateTime(schedule.startTime);
+        const end = formatDateTime(schedule.endTime);
+        return `${start.date} ${start.time} - ${end.time}`;
+      },
+    },
     {
       header: "Teacher",
       accessor: (schedule: Schedule) => schedule.teacherName || "N/A",
@@ -377,7 +368,6 @@ const handleSubmit = async (e: React.FormEvent) => {
             Select a date range and export format to export schedules.
           </p>
 
-          {/* Export Format Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Export Format
@@ -408,7 +398,6 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
           </div>
 
-          {/* Date Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Date Range (Optional)
