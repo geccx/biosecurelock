@@ -81,31 +81,35 @@ export function ScheduleManagement() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await labSchedulesService.create({
-        labName: formData.labName,
-        teacherId: parseInt(formData.teacherId),
-        startTime: new Date(formData.startTime).toISOString(),
-        endTime: new Date(formData.endTime).toISOString(),
-        subject: formData.subject,
-      });
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  try {
+    // Convert local datetime to ISO string (which includes timezone info)
+    const startTime = new Date(formData.startTime);
+    const endTime = new Date(formData.endTime);
+    
+    await labSchedulesService.create({
+      labName: formData.labName,
+      teacherId: parseInt(formData.teacherId),
+      startTime: startTime.toISOString(), // Already correct
+      endTime: endTime.toISOString(),     // Already correct
+      subject: formData.subject,
+    });
 
-      setIsModalOpen(false);
-      setFormData({
-        labName: "",
-        teacherId: "",
-        startTime: "",
-        endTime: "",
-        subject: "",
-      });
-      fetchData();
-    } catch (error) {
-      console.error("Failed to create schedule:", error);
-      showAlert("Failed to create schedule. Please try again.", "error");
-    }
-  };
+    setIsModalOpen(false);
+    setFormData({
+      labName: "",
+      teacherId: "",
+      startTime: "",
+      endTime: "",
+      subject: "",
+    });
+    fetchData();
+  } catch (error) {
+    console.error("Failed to create schedule:", error);
+    showAlert("Failed to create schedule. Please try again.", "error");
+  }
+};
 
   // Filter schedules based on date range for export
   const getFilteredSchedules = (startDate: string, endDate: string) => {
@@ -270,21 +274,27 @@ export function ScheduleManagement() {
       header: "Subject",
       accessor: (schedule: Schedule) => schedule.subject || "N/A",
     },
-    {
-      header: "Time of Access",
-      accessor: (schedule: Schedule) => {
-        const startTime = schedule.startTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        const endTime = schedule.endTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        const date = schedule.startTime.toLocaleDateString();
-        return `${date} ${startTime} - ${endTime}`;
-      },
-    },
+  {
+  header: "Time of Access",
+  accessor: (schedule: Schedule) => {
+    // Parse the UTC datetime and convert to local time
+    const startDate = new Date(schedule.startTime);
+    const endDate = new Date(schedule.endTime);
+    
+    const startTime = startDate.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true, // Show AM/PM
+    });
+    const endTime = endDate.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const date = startDate.toLocaleDateString();
+    return `${date} ${startTime} - ${endTime}`;
+  },
+},
     {
       header: "Teacher",
       accessor: (schedule: Schedule) => schedule.teacherName || "N/A",
