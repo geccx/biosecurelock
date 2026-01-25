@@ -84,15 +84,13 @@ export function ScheduleManagement() {
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   try {
-    // Convert local datetime to ISO string (which includes timezone info)
-    const startTime = new Date(formData.startTime);
-    const endTime = new Date(formData.endTime);
-    
+    // Don't convert to ISO - send the datetime-local values directly
+    // The backend should treat these as local times
     await labSchedulesService.create({
       labName: formData.labName,
       teacherId: parseInt(formData.teacherId),
-      startTime: startTime.toISOString(), // Already correct
-      endTime: endTime.toISOString(),     // Already correct
+      startTime: formData.startTime, // Send as-is: "2026-01-25T16:20"
+      endTime: formData.endTime,     // Send as-is: "2026-01-26T01:00"
       subject: formData.subject,
     });
 
@@ -274,24 +272,25 @@ const handleSubmit = async (e: React.FormEvent) => {
       header: "Subject",
       accessor: (schedule: Schedule) => schedule.subject || "N/A",
     },
-  {
+   {
   header: "Time of Access",
   accessor: (schedule: Schedule) => {
-    // Parse the UTC datetime and convert to local time
-    const startDate = new Date(schedule.startTime);
-    const endDate = new Date(schedule.endTime);
+    // The database stores in local time (Asia/Manila)
+    // Parse without timezone conversion
+    const startDate = new Date(schedule.startTime + '+08:00'); // Add Manila timezone
+    const endDate = new Date(schedule.endTime + '+08:00');
     
-    const startTime = startDate.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true, // Show AM/PM
-    });
-    const endTime = endDate.toLocaleTimeString([], {
+    const startTime = startDate.toLocaleTimeString('en-PH', {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     });
-    const date = startDate.toLocaleDateString();
+    const endTime = endDate.toLocaleTimeString('en-PH', {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const date = startDate.toLocaleDateString('en-PH');
     return `${date} ${startTime} - ${endTime}`;
   },
 },
