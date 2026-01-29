@@ -53,6 +53,7 @@ const tuyaWebhookRoutes = require("./routes/tuya-webhook.routes");
 const notificationPreferencesRoutes = require("./routes/notificationPreferences.routes");
 const passwordRequestsRoutes = require("./routes/passwordRequests.routes");
 const rolePrivilegesRoutes = require("./routes/rolePrivileges.routes");
+const semesterRoutes = require("./routes/semester.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -62,7 +63,7 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
-  })
+  }),
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -104,6 +105,7 @@ app.use("/api/tuya", tuyaWebhookRoutes);
 app.use("/api/notifications", notificationPreferencesRoutes);
 app.use("/api/password-requests", passwordRequestsRoutes);
 app.use("/api/role-privileges", rolePrivilegesRoutes);
+app.use("/api/admin", semesterRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -129,7 +131,9 @@ async function startServer() {
   try {
     logger.info("🚀 Starting Smart Door Lock System...");
     logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
-    logger.info(`Database: ${process.env.DB_HOST || "localhost"}:${process.env.DB_PORT || "3306"}`);
+    logger.info(
+      `Database: ${process.env.DB_HOST || "localhost"}:${process.env.DB_PORT || "3306"}`,
+    );
 
     // ===================================
     // STEP 1: Initialize Database
@@ -160,7 +164,10 @@ async function startServer() {
       await fabricService.initialize();
       logger.info("✓ Hyperledger Fabric initialized");
     } catch (fabricError) {
-      logger.error("✗ Hyperledger Fabric initialization failed:", fabricError.message);
+      logger.error(
+        "✗ Hyperledger Fabric initialization failed:",
+        fabricError.message,
+      );
       logger.warn("Server will start but Fabric features will be unavailable");
       logger.warn("Please check:");
       logger.warn("  1. Channel name in .env matches AWS instance");
@@ -177,7 +184,10 @@ async function startServer() {
       await schedulerService.initialize();
       logger.info("✓ Scheduler initialized");
     } catch (schedulerError) {
-      logger.error("✗ Scheduler initialization failed:", schedulerError.message);
+      logger.error(
+        "✗ Scheduler initialization failed:",
+        schedulerError.message,
+      );
       logger.warn("Server will start but scheduled tasks will not run");
     }
 
@@ -190,7 +200,9 @@ async function startServer() {
       logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       logger.info("🎉 Smart Door Lock System is ready!");
       logger.info(`📡 API endpoint: http://localhost:${PORT}`);
-      logger.info(`🔐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+      logger.info(
+        `🔐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:5173"}`,
+      );
       logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     });
 
@@ -200,27 +212,37 @@ async function startServer() {
     if (fabricService.contract) {
       try {
         logger.info("📡 Setting up Fabric event listeners...");
-        
-        await fabricService.addContractListener("EnrollmentRequested", (event) => {
-          logger.info("Fabric Event - Enrollment Requested:", event);
-        });
 
-        await fabricService.addContractListener("EnrollmentApproved", (event) => {
-          logger.info("Fabric Event - Enrollment Approved:", event);
-        });
+        await fabricService.addContractListener(
+          "EnrollmentRequested",
+          (event) => {
+            logger.info("Fabric Event - Enrollment Requested:", event);
+          },
+        );
+
+        await fabricService.addContractListener(
+          "EnrollmentApproved",
+          (event) => {
+            logger.info("Fabric Event - Enrollment Approved:", event);
+          },
+        );
 
         await fabricService.addContractListener("AccessLogged", (event) => {
           logger.info("Fabric Event - Access Logged:", event);
         });
-        
+
         logger.info("✓ Fabric event listeners registered");
       } catch (listenerError) {
-        logger.warn("Failed to setup Fabric event listeners:", listenerError.message);
+        logger.warn(
+          "Failed to setup Fabric event listeners:",
+          listenerError.message,
+        );
       }
     } else {
-      logger.warn("⚠️  Fabric event listeners skipped (Fabric not initialized)");
+      logger.warn(
+        "⚠️  Fabric event listeners skipped (Fabric not initialized)",
+      );
     }
-
   } catch (error) {
     logger.error("❌ Failed to start server:", error);
     logger.error(error.stack);

@@ -66,7 +66,7 @@ export const usersService = {
    */
   async getById(userId: number): Promise<ApiResponse<BackendUser>> {
     const response = await api.get<ApiResponse<BackendUser>>(
-      `/users/${userId}`
+      `/users/${userId}`,
     );
     return response.data;
   },
@@ -78,7 +78,7 @@ export const usersService = {
    * Only allows: admin, teacher, techsupport roles
    */
   async create(
-    data: CreateUserData
+    data: CreateUserData,
   ): Promise<
     ApiResponse<
       BackendUser & { tuyaUserId?: string; tuyaDeviceUserId?: string }
@@ -97,7 +97,7 @@ export const usersService = {
    */
   async update(
     userId: number,
-    data: UpdateUserData
+    data: UpdateUserData,
   ): Promise<ApiResponse<void>> {
     const response = await api.put<ApiResponse<void>>(`/users/${userId}`, data);
     return response.data;
@@ -107,7 +107,7 @@ export const usersService = {
    * Toggle user status (activate/deactivate)
    */
   async toggleStatus(
-    userId: number
+    userId: number,
   ): Promise<ApiResponse<{ id: string; status: string }>> {
     const response = await api.post<
       ApiResponse<{ id: string; status: string }>
@@ -119,7 +119,7 @@ export const usersService = {
    * Toggle user status (activate/deactivate) - Tech Support specific
    */
   async toggleStatusTechSupport(
-    userId: number
+    userId: number,
   ): Promise<ApiResponse<{ id: string; status: string }>> {
     const response = await api.post<
       ApiResponse<{ id: string; status: string }>
@@ -132,7 +132,7 @@ export const usersService = {
    * Sets password to temporary password "1234567"
    */
   async resetPassword(
-    userId: number
+    userId: number,
   ): Promise<
     ApiResponse<{ id: string; email: string; temporaryPassword: string }>
   > {
@@ -155,11 +155,11 @@ export const usersService = {
    */
   async updatePermissions(
     userId: number,
-    data: UpdatePermissionsData
+    data: UpdatePermissionsData,
   ): Promise<ApiResponse<void>> {
     const response = await api.put<ApiResponse<void>>(
       `/users/${userId}/permissions`,
-      data
+      data,
     );
     return response.data;
   },
@@ -169,7 +169,7 @@ export const usersService = {
    */
   async getTeachers(): Promise<ApiResponse<Teacher[]>> {
     const response = await api.get<ApiResponse<Teacher[]>>(
-      "/users/list/teachers"
+      "/users/list/teachers",
     );
     return response.data;
   },
@@ -182,7 +182,7 @@ export const usersService = {
     console.log(`[Frontend] Calling Tuya users API (aggregated method)`);
 
     const response = await api.get<ApiResponse<TuyaUser[]>>(
-      "/users/tuya/enrolled"
+      "/users/tuya/enrolled",
     );
     return response.data;
   },
@@ -200,11 +200,11 @@ export const usersService = {
       birthday?: number;
       height?: number;
       weight?: number;
-    }
+    },
   ): Promise<ApiResponse<void>> {
     const response = await api.put<ApiResponse<void>>(
       `/users/tuya/user/${userId}`,
-      data
+      data,
     );
     return response.data;
   },
@@ -215,7 +215,7 @@ export const usersService = {
    */
   async deleteTuyaDeviceUser(userId: string): Promise<ApiResponse<void>> {
     const response = await api.delete<ApiResponse<void>>(
-      `/users/tuya/user/${userId}`
+      `/users/tuya/user/${userId}`,
     );
     return response.data;
   },
@@ -228,12 +228,43 @@ export const usersService = {
    */
   async getTuyaUserDetails(
     userId: string,
-    codes?: string
+    codes?: string,
   ): Promise<ApiResponse<TuyaUser>> {
     const params = codes ? `?codes=${encodeURIComponent(codes)}` : "";
     const response = await api.get<ApiResponse<TuyaUser>>(
-      `/users/tuya/user/${userId}/details${params}`
+      `/users/tuya/user/${userId}/details${params}`,
     );
+    return response.data;
+  },
+
+  /**
+   * Get User List (Tuya Cloud - Smart Home User Management)
+   * GET /v2.0/apps/{schema}/users - Mobile app users (schema: appsmartlock)
+   * Reference: https://developer.tuya.com/en/docs/cloud/76f3e0885f?id=Kawfji9n0sdmq
+   */
+  async getTuyaAppUsers(params?: {
+    page_no?: number;
+    page_size?: number;
+    start_time?: number;
+    end_time?: number;
+    username?: string;
+  }): Promise<
+    ApiResponse<TuyaAppUser[]> & { total?: number; has_more?: boolean }
+  > {
+    const searchParams = new URLSearchParams();
+    if (params?.page_no != null)
+      searchParams.set("page_no", String(params.page_no));
+    if (params?.page_size != null)
+      searchParams.set("page_size", String(params.page_size));
+    if (params?.start_time != null)
+      searchParams.set("start_time", String(params.start_time));
+    if (params?.end_time != null)
+      searchParams.set("end_time", String(params.end_time));
+    if (params?.username) searchParams.set("username", params.username);
+    const query = searchParams.toString();
+    const response = await api.get<
+      ApiResponse<TuyaAppUser[]> & { total?: number; has_more?: boolean }
+    >(`/users/tuya/app-users${query ? `?${query}` : ""}`);
     return response.data;
   },
 
@@ -243,7 +274,7 @@ export const usersService = {
    */
   async addTuyaUserUnlockingMethod(
     userId: string,
-    unlockSn: number | string
+    unlockSn: number | string,
   ): Promise<ApiResponse<{ id: number }>> {
     const payload = {
       unlockSn,
@@ -252,7 +283,7 @@ export const usersService = {
 
     const response = await api.post<ApiResponse<{ id: number }>>(
       `/users/tuya/user/${userId}/unlocking-methods`,
-      payload
+      payload,
     );
     return response.data;
   },
@@ -277,7 +308,7 @@ export const usersService = {
         working_day: number;
       }>;
       relate_dev_list?: string[];
-    }
+    },
   ): Promise<ApiResponse<{ id: number; tuyaResponse?: unknown }>> {
     const response = await api.post<
       ApiResponse<{ id: number; tuyaResponse?: unknown }>
@@ -285,6 +316,17 @@ export const usersService = {
     return response.data;
   },
 };
+
+/** Mobile app user from Tuya Get User List API (GET /v2.0/apps/{schema}/users) */
+export interface TuyaAppUser {
+  uid: string;
+  username: string;
+  mobile?: string;
+  email?: string;
+  create_time: number;
+  update_time: number;
+  country_code: string;
+}
 
 export interface TuyaUser {
   // Core user fields

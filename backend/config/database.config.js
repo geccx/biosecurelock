@@ -29,5 +29,11 @@ module.exports = {
     userCreationBackup: "user_creation_backup",
     passwordRequests: "password_requests",
     rolePrivileges: "role_privileges",
+    // Semester schedule management
+    semesters: "semesters",
+    scheduleTemplates: "schedule_templates",
+    scheduleInstances: "schedule_instances",
+    scheduleChanges: "schedule_changes",
+    semesterExclusions: "semester_exclusions",
   },
 };

@@ -16,6 +16,11 @@ import { NotificationManagement } from "./pages/admin/NotificationManagement";
 import { UserEnrollment as AdminUserEnrollment } from "./pages/admin/UserEnrollment";
 import { LaboratoryManagement } from "./pages/admin/LaboratoryManagement";
 import { AdminAccessLogs } from "./pages/admin/AdminAccessLogs";
+import { SemesterList } from "./pages/admin/SemesterList";
+import { ScheduleTemplates } from "./pages/admin/ScheduleTemplates";
+import { GeneratedSchedules } from "./pages/admin/GeneratedSchedules";
+import { ScheduleChangeRequests } from "./pages/admin/ScheduleChangeRequests";
+import { ScheduleAuditTrail } from "./pages/admin/ScheduleAuditTrail";
 // Teacher pages
 import { TeacherDashboard } from "./pages/teacher/TeacherDashboard";
 import { MySchedules } from "./pages/teacher/MySchedules";
@@ -53,7 +58,7 @@ export function App() {
       }
       return false;
     },
-    [login]
+    [login],
   );
   const handleLogout = () => {
     logout();
@@ -88,6 +93,11 @@ export function App() {
       "/admin/reports": "Generate Reports",
       "/admin/notifications": "Notification Preferences",
       "/admin/laboratories": "Laboratory Management",
+      "/admin/semesters": "Semesters",
+      "/admin/schedule-templates": "Schedule Templates",
+      "/admin/semester-schedules": "Generated Schedules",
+      "/admin/schedule-changes": "Change Requests",
+      "/admin/audit-trail": "Audit Trail",
       // Teacher
       "/teacher": "Dashboard",
       "/teacher/schedules": "My Schedules",
@@ -136,6 +146,16 @@ export function App() {
           return <LaboratoryManagement />;
         case "/admin/logs":
           return <AdminAccessLogs />;
+        case "/admin/semesters":
+          return <SemesterList />;
+        case "/admin/schedule-templates":
+          return <ScheduleTemplates />;
+        case "/admin/semester-schedules":
+          return <GeneratedSchedules />;
+        case "/admin/schedule-changes":
+          return <ScheduleChangeRequests />;
+        case "/admin/audit-trail":
+          return <ScheduleAuditTrail />;
         default:
           return <AdminDashboard />;
       }

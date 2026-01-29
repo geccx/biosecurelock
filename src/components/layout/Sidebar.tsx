@@ -15,6 +15,9 @@ import {
   BellIcon,
   KeyIcon,
   BuildingIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CalendarRangeIcon,
 } from "lucide-react";
 import type { UserRole } from "../../types";
 import "../../styles/Sidebar.css";
@@ -38,7 +41,22 @@ export function Sidebar({
     techsupport: "Tech Support",
   };
 
-  const adminMenuItems = [
+  const semesterSchedulePaths = [
+    "/admin/semesters",
+    "/admin/schedule-templates",
+    "/admin/semester-schedules",
+    "/admin/schedule-changes",
+    "/admin/audit-trail",
+  ];
+
+  const adminMenuItems: Array<
+    | { icon: typeof LayoutDashboardIcon; label: string; path: string }
+    | {
+        icon: typeof CalendarRangeIcon;
+        label: string;
+        children: Array<{ label: string; path: string }>;
+      }
+  > = [
     {
       icon: LayoutDashboardIcon,
       label: "Dashboard",
@@ -58,6 +76,17 @@ export function Sidebar({
       icon: CalendarIcon,
       label: "Schedules",
       path: "/admin/schedules",
+    },
+    {
+      icon: CalendarRangeIcon,
+      label: "Semester Schedules",
+      children: [
+        { label: "Semesters", path: "/admin/semesters" },
+        { label: "Schedule Templates", path: "/admin/schedule-templates" },
+        { label: "Generated Schedules", path: "/admin/semester-schedules" },
+        { label: "Change Requests", path: "/admin/schedule-changes" },
+        { label: "Audit Trail", path: "/admin/audit-trail" },
+      ],
     },
     {
       icon: ClockIcon,
@@ -186,8 +215,11 @@ export function Sidebar({
     role === "admin"
       ? adminMenuItems
       : role === "teacher"
-      ? teacherMenuItems
-      : techSupportMenuItems;
+        ? teacherMenuItems
+        : techSupportMenuItems;
+
+  const isSemesterScheduleExpanded =
+    role === "admin" && semesterSchedulePaths.some((p) => currentPath === p);
 
   const getRoleLabel = (r: UserRole): string => {
     if (r === "admin" || r === "teacher" || r === "techsupport") {
@@ -214,10 +246,57 @@ export function Sidebar({
         <div className="nav-list">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            if ("children" in item) {
+              const isExpanded = isSemesterScheduleExpanded;
+              const isParentActive = item.children.some(
+                (c) => currentPath === c.path,
+              );
+              return (
+                <div key={item.label} className="nav-group">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate(item.children[0].path)}
+                    className={`nav-item nav-item-group ${
+                      isParentActive ? "nav-item-active" : ""
+                    }`}
+                  >
+                    <Icon className="nav-icon" />
+                    <span className="nav-label flex-1 text-left">
+                      {item.label}
+                    </span>
+                    {isExpanded ? (
+                      <ChevronDownIcon className="nav-icon w-4 h-4" />
+                    ) : (
+                      <ChevronRightIcon className="nav-icon w-4 h-4" />
+                    )}
+                  </button>
+                  {isExpanded && (
+                    <div className="nav-sub-list">
+                      {item.children.map((child) => {
+                        const isChildActive = currentPath === child.path;
+                        return (
+                          <button
+                            key={child.path}
+                            type="button"
+                            onClick={() => onNavigate(child.path)}
+                            className={`nav-item nav-item-sub ${
+                              isChildActive ? "nav-item-active" : ""
+                            }`}
+                          >
+                            <span className="nav-label">{child.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
             const isActive = currentPath === item.path;
             return (
               <button
                 key={item.path}
+                type="button"
                 onClick={() => onNavigate(item.path)}
                 className={`nav-item ${isActive ? "nav-item-active" : ""}`}
               >

@@ -34,7 +34,7 @@ router.get("/me", authenticate, async (req, res) => {
   try {
     const [users] = await db.query(
       "SELECT id, username, email, role, status, department, created_at FROM users WHERE id = ?",
-      [req.user.id]
+      [req.user.id],
     );
 
     if (users.length === 0) {
@@ -49,7 +49,7 @@ router.get("/me", authenticate, async (req, res) => {
     // Get enrollments
     const [enrollments] = await db.query(
       "SELECT enrollment_type, status FROM enrollments WHERE user_id = ? AND status = 'approved'",
-      [req.user.id]
+      [req.user.id],
     );
 
     res.json({
@@ -82,7 +82,7 @@ router.get(
     PERMISSIONS.CREATE_USER,
     PERMISSIONS.EDIT_USER,
     PERMISSIONS.DELETE_USER,
-    PERMISSIONS.DEACTIVATE_USER
+    PERMISSIONS.DEACTIVATE_USER,
   ),
   [
     query("role")
@@ -152,7 +152,7 @@ router.get(
         error: "Failed to fetch users",
       });
     }
-  }
+  },
 );
 
 // Get user by ID (requires user management permissions)
@@ -163,7 +163,7 @@ router.get(
     PERMISSIONS.CREATE_USER,
     PERMISSIONS.EDIT_USER,
     PERMISSIONS.DELETE_USER,
-    PERMISSIONS.DEACTIVATE_USER
+    PERMISSIONS.DEACTIVATE_USER,
   ),
   param("userId").isInt(),
   validate,
@@ -173,7 +173,7 @@ router.get(
 
       const [users] = await db.query(
         "SELECT id, username, email, role, status, department, created_at FROM users WHERE id = ?",
-        [userId]
+        [userId],
       );
 
       if (users.length === 0) {
@@ -188,7 +188,7 @@ router.get(
       // Get enrollments
       const [enrollments] = await db.query(
         "SELECT enrollment_type, status FROM enrollments WHERE user_id = ?",
-        [userId]
+        [userId],
       );
 
       res.json({
@@ -211,7 +211,7 @@ router.get(
         error: "Failed to fetch user",
       });
     }
-  }
+  },
 );
 
 // Create a new user
@@ -288,7 +288,7 @@ router.post(
       // Check if user already exists in database
       const [existing] = await connection.query(
         "SELECT id FROM users WHERE email = ?",
-        [email]
+        [email],
       );
 
       if (existing.length > 0) {
@@ -323,14 +323,14 @@ router.post(
             });
           } else {
             throw new Error(
-              "Failed to get user_id from Tuya platform registration"
+              "Failed to get user_id from Tuya platform registration",
             );
           }
         } catch (tuyaRegError) {
           await connection.rollback();
           logger.error(
             "Failed to register user in Tuya platform:",
-            tuyaRegError.message
+            tuyaRegError.message,
           );
           return res.status(500).json({
             success: false,
@@ -364,7 +364,7 @@ router.post(
       } catch (statusError) {
         logger.warn(
           "Failed to check device status, assuming offline:",
-          statusError.message
+          statusError.message,
         );
         deviceStatus = "offline";
       }
@@ -420,7 +420,7 @@ router.post(
         try {
           tuyaDeviceUser = await tuyaService.addDeviceUser(
             deviceId,
-            deviceUserData
+            deviceUserData,
           );
           deviceUserCreationSuccess = true;
           logger.info("Device user added successfully in Tuya", {
@@ -443,7 +443,7 @@ router.post(
           {
             deviceId,
             email,
-          }
+          },
         );
         deviceUserCreationSuccess = false;
         deviceUserError = "Device is offline";
@@ -457,7 +457,7 @@ router.post(
       const [result] = await connection.query(
         `INSERT INTO users (username, email, password_hash, role, status, department, tuya_user_id, created_at)
          VALUES (?, ?, ?, ?, 'active', ?, ?, NOW())`,
-        [name, email, passwordHash, role, department || null, tuyaUserId]
+        [name, email, passwordHash, role, department || null, tuyaUserId],
       );
 
       const newUserId = result.insertId;
@@ -470,7 +470,7 @@ router.post(
           fabricIdentity = fabricUser.fabricIdentity;
           await connection.query(
             "UPDATE users SET fabric_identity = ? WHERE id = ?",
-            [fabricIdentity, newUserId]
+            [fabricIdentity, newUserId],
           );
         }
       } catch (fabricError) {
@@ -506,7 +506,10 @@ router.post(
           });
         } catch (pinError) {
           // Don't fail user creation if PIN creation fails
-          logger.warn("Failed to create default PIN for user:", pinError.message);
+          logger.warn(
+            "Failed to create default PIN for user:",
+            pinError.message,
+          );
         }
       }
 
@@ -523,7 +526,7 @@ router.post(
           syncStatus,
           deviceUserError || null,
           req.user.id,
-        ]
+        ],
       );
 
       // Log the action
@@ -541,7 +544,7 @@ router.post(
             deviceStatus,
             syncStatus,
           }),
-        ]
+        ],
       );
 
       await connection.commit();
@@ -551,7 +554,7 @@ router.post(
       await notificationService.notifyAdminsAndTechSupport(
         notificationService.NOTIFICATION_TYPES.NEW_USER_ADDED,
         "New User Added",
-        `A new ${role} user "${name}" (${email}) has been added to the system and Tuya device.`
+        `A new ${role} user "${name}" (${email}) has been added to the system and Tuya device.`,
       );
 
       logger.info("User created successfully", {
@@ -598,7 +601,7 @@ router.post(
     } finally {
       connection.release();
     }
-  }
+  },
 );
 
 // Update user
@@ -660,7 +663,7 @@ router.put(
 
       await db.query(
         `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
-        params
+        params,
       );
 
       // Log the action
@@ -670,7 +673,7 @@ router.put(
         [
           req.user.id,
           JSON.stringify({ updatedUserId: userId, updatedBy: req.user.role }),
-        ]
+        ],
       );
 
       logger.info("User updated", { userId, updatedBy: req.user.id });
@@ -686,7 +689,7 @@ router.put(
         error: "Failed to update user",
       });
     }
-  }
+  },
 );
 
 // Toggle user status (activate/deactivate)
@@ -705,7 +708,7 @@ router.post(
       // Get current status and role
       const [users] = await db.query(
         "SELECT status, role FROM users WHERE id = ?",
-        [userId]
+        [userId],
       );
 
       if (users.length === 0) {
@@ -728,7 +731,7 @@ router.post(
 
       await db.query(
         "UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?",
-        [newStatus, userId]
+        [newStatus, userId],
       );
 
       // Log the action
@@ -742,7 +745,7 @@ router.post(
             newStatus,
             changedBy: req.user.role,
           }),
-        ]
+        ],
       );
 
       logger.info("User status toggled", {
@@ -765,7 +768,7 @@ router.post(
         error: "Failed to toggle user status",
       });
     }
-  }
+  },
 );
 
 // Toggle user status (activate/deactivate) - Tech Support specific
@@ -792,7 +795,7 @@ router.post(
       // Get current status and role
       const [users] = await db.query(
         "SELECT status, role FROM users WHERE id = ?",
-        [userId]
+        [userId],
       );
 
       if (users.length === 0) {
@@ -814,7 +817,7 @@ router.post(
 
       await db.query(
         "UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?",
-        [newStatus, userId]
+        [newStatus, userId],
       );
 
       // Log the action
@@ -828,7 +831,7 @@ router.post(
             newStatus,
             changedBy: req.user.role,
           }),
-        ]
+        ],
       );
 
       logger.info("User status toggled by techsupport", {
@@ -852,7 +855,7 @@ router.post(
         error: "Failed to toggle user status",
       });
     }
-  }
+  },
 );
 
 // Reset user password (techsupport and admin)
@@ -871,7 +874,7 @@ router.post(
       // Get user info to check role and get Tuya user ID
       const [users] = await db.query(
         "SELECT id, username, email, role, tuya_user_id FROM users WHERE id = ?",
-        [userId]
+        [userId],
       );
 
       if (users.length === 0) {
@@ -898,7 +901,7 @@ router.post(
       // Update password in database
       await db.query(
         "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?",
-        [passwordHash, userId]
+        [passwordHash, userId],
       );
 
       // Also create temporary password in Tuya lock
@@ -938,14 +941,14 @@ router.post(
             "TUYA_DEVICE_ID not set, skipping Tuya password creation",
             {
               userId: userId,
-            }
+            },
           );
         }
       } catch (tuyaError) {
         tuyaPasswordError = tuyaError.message;
         logger.error(
           "Failed to create temporary password in Tuya lock:",
-          tuyaError
+          tuyaError,
         );
         // Don't fail the entire operation if Tuya password creation fails
       }
@@ -965,7 +968,7 @@ router.post(
             tuyaPasswordCreated: tuyaPasswordCreated,
             tuyaPasswordError: tuyaPasswordError,
           }),
-        ]
+        ],
       );
 
       logger.info("User password reset by techsupport", {
@@ -978,8 +981,8 @@ router.post(
       const message = tuyaPasswordCreated
         ? "Password reset successfully. Temporary password: 1234567 (also set in lock)"
         : tuyaPasswordError
-        ? `Password reset successfully. Temporary password: 1234567 (Note: Failed to set in lock: ${tuyaPasswordError})`
-        : "Password reset successfully. Temporary password: 1234567";
+          ? `Password reset successfully. Temporary password: 1234567 (Note: Failed to set in lock: ${tuyaPasswordError})`
+          : "Password reset successfully. Temporary password: 1234567";
 
       res.json({
         success: true,
@@ -999,7 +1002,7 @@ router.post(
         error: "Failed to reset user password",
       });
     }
-  }
+  },
 );
 
 // Update user permissions (admin only)
@@ -1017,7 +1020,7 @@ router.put(
       await fabricService.updateUserPermissions(
         userId,
         permissions,
-        req.user.id
+        req.user.id,
       );
 
       logger.info("User permissions updated", { userId });
@@ -1033,7 +1036,7 @@ router.put(
         error: "Failed to update permissions",
       });
     }
-  }
+  },
 );
 
 // Delete user
@@ -1065,7 +1068,7 @@ router.delete(
       // Get user info before deletion for logging and Tuya deletion
       const [users] = await connection.query(
         "SELECT username, email, role, tuya_user_id FROM users WHERE id = ?",
-        [userId]
+        [userId],
       );
 
       if (users.length === 0) {
@@ -1099,7 +1102,7 @@ router.delete(
           // Retrieve all temporary passwords associated with this user from the database
           const [tempPasswords] = await connection.query(
             "SELECT id, tuya_password_id FROM temporary_passwords WHERE target_user_id = ? AND tuya_password_id IS NOT NULL AND tuya_password_id != ''",
-            [userId]
+            [userId],
           );
 
           logger.info("Found temporary passwords for user", {
@@ -1149,7 +1152,7 @@ router.delete(
                       userId,
                       passwordId,
                       localId: tempPassword.id,
-                    }
+                    },
                   );
                   passwordDeletionResults.push({
                     passwordId,
@@ -1171,7 +1174,7 @@ router.delete(
                       passwordId,
                       localId: tempPassword.id,
                       error: getError.message,
-                    }
+                    },
                   );
                 }
               }
@@ -1196,7 +1199,7 @@ router.delete(
             {
               userId,
               error: error.message,
-            }
+            },
           );
           // Continue with user deletion even if password deletion fails
         }
@@ -1205,7 +1208,7 @@ router.delete(
           "TUYA_DEVICE_ID not set, skipping temporary password deletion",
           {
             userId,
-          }
+          },
         );
       }
 
@@ -1224,7 +1227,7 @@ router.delete(
                   role: "",
                   page_no: 1,
                   page_size: 100,
-                }
+                },
               );
 
               const usersList =
@@ -1235,14 +1238,15 @@ router.delete(
               // Find the device user that matches by uid or user_contact
               const matchingDeviceUser = usersList.find(
                 (du) =>
-                  du.uid === user.tuya_user_id || du.user_contact === user.email
+                  du.uid === user.tuya_user_id ||
+                  du.user_contact === user.email,
               );
 
               if (matchingDeviceUser && matchingDeviceUser.user_id) {
                 // Delete the device user from Tuya
                 tuyaDeletionResult = await tuyaService.deleteDeviceUser(
                   deviceId,
-                  matchingDeviceUser.user_id
+                  matchingDeviceUser.user_id,
                 );
                 logger.info("User deleted from Tuya Cloud", {
                   userId,
@@ -1257,7 +1261,7 @@ router.delete(
                     userId,
                     tuyaUserId: user.tuya_user_id,
                     email: user.email,
-                  }
+                  },
                 );
                 tuyaDeletionError =
                   "Device user not found in Tuya (may have been already deleted)";
@@ -1302,7 +1306,7 @@ router.delete(
             tuyaError: tuyaDeletionError,
             deletedBy: req.user.role,
           }),
-        ]
+        ],
       );
 
       await connection.commit();
@@ -1319,15 +1323,15 @@ router.delete(
       const passwordMessages = [];
       if (passwordDeletionResults.length > 0) {
         const deletedCount = passwordDeletionResults.filter(
-          (p) => p.deleted
+          (p) => p.deleted,
         ).length;
         passwordMessages.push(
-          `${deletedCount} temporary password(s) deleted from TUYA`
+          `${deletedCount} temporary password(s) deleted from TUYA`,
         );
       }
       if (passwordDeletionErrors.length > 0) {
         passwordMessages.push(
-          `${passwordDeletionErrors.length} password deletion error(s)`
+          `${passwordDeletionErrors.length} password deletion error(s)`,
         );
       }
 
@@ -1364,14 +1368,14 @@ router.delete(
     } finally {
       connection.release();
     }
-  }
+  },
 );
 
 // Get teachers list (for schedule creation)
 router.get("/list/teachers", authenticate, async (req, res) => {
   try {
     const [teachers] = await db.query(
-      "SELECT id, username, email FROM users WHERE role = 'teacher' AND status = 'active' ORDER BY username"
+      "SELECT id, username, email FROM users WHERE role = 'teacher' AND status = 'active' ORDER BY username",
     );
 
     res.json({
@@ -1387,6 +1391,40 @@ router.get("/list/teachers", authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to fetch teachers",
+    });
+  }
+});
+
+// Get User List (Tuya Cloud - Smart Home User Management)
+// GET /v2.0/apps/{schema}/users - Mobile app users under developer account
+router.get("/tuya/app-users", authenticate, requireStaff, async (req, res) => {
+  try {
+    const {
+      page_no = 1,
+      page_size = 20,
+      start_time,
+      end_time,
+      username,
+    } = req.query;
+    const schema = "appsmartlock";
+    const result = await tuyaService.getAppUserList(schema, {
+      page_no,
+      page_size,
+      start_time: start_time ? parseInt(start_time, 10) : undefined,
+      end_time: end_time ? parseInt(end_time, 10) : undefined,
+      username: username || undefined,
+    });
+    res.json({
+      success: true,
+      data: result.list,
+      total: result.total,
+      has_more: result.has_more,
+    });
+  } catch (error) {
+    logger.error("Error fetching Tuya app users:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch app users",
     });
   }
 });
@@ -1408,7 +1446,7 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
 
     // ✅ FIX: Fetch ALL users by using empty filters and large page size
     const keyword = ""; // Don't filter by keyword
-    const role = "";     // Don't filter by role
+    const role = ""; // Don't filter by role
     const pageSize = 100; // Increase page size to get all users
 
     // Fetch first page
@@ -1417,9 +1455,10 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
     let hasMorePages = true;
 
     // ✅ FIX: Loop through all pages to get ALL users
-    while (hasMorePages && currentPage <= 10) { // Safety limit: max 10 pages
+    while (hasMorePages && currentPage <= 10) {
+      // Safety limit: max 10 pages
       console.log(`[API] Fetching page ${currentPage}...`);
-      
+
       const result = await tuyaService.getDeviceUsersById(deviceId, {
         keyword: keyword,
         role: role,
@@ -1433,15 +1472,15 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
       }
 
       // ✅ FIX: Try multiple possible response formats
-      const users = 
-        result.records ||           // v1.1 API format
-        result.list ||              // Alternative format
-        result.result?.records ||   // Nested format
-        result.result?.list ||      // Nested alternative
+      const users =
+        result.records || // v1.1 API format
+        result.list || // Alternative format
+        result.result?.records || // Nested format
+        result.result?.list || // Nested alternative
         (Array.isArray(result) ? result : []); // Array format
 
       console.log(`[API] Page ${currentPage}: Found ${users.length} users`);
-      
+
       if (users.length === 0) {
         hasMorePages = false;
         break;
@@ -1451,8 +1490,8 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
 
       // Check if there are more pages
       const total = result.total || result.result?.total || 0;
-      const hasMore = (currentPage * pageSize) < total;
-      
+      const hasMore = currentPage * pageSize < total;
+
       if (!hasMore || users.length < pageSize) {
         hasMorePages = false;
       } else {
@@ -1492,7 +1531,7 @@ router.get("/tuya/enrolled", authenticate, requireStaff, async (req, res) => {
       if (user.user_contact) {
         const [matchedUsers] = await db.query(
           "SELECT * FROM users WHERE email = ? OR username = ? LIMIT 1",
-          [user.user_contact, user.user_contact]
+          [user.user_contact, user.user_contact],
         );
         if (matchedUsers.length > 0) {
           user.localUserId = matchedUsers[0].id.toString();
@@ -1559,7 +1598,7 @@ router.post(
         details: error.message,
       });
     }
-  }
+  },
 );
 
 // Get Tuya user information by user ID (admin only)
@@ -1592,7 +1631,7 @@ router.get(
         details: error.message,
       });
     }
-  }
+  },
 );
 
 // Update Tuya device user (admin only)
@@ -1686,7 +1725,7 @@ router.put(
         details: error.message,
       });
     }
-  }
+  },
 );
 
 // Add existing user as device user in Tuya (admin only)
@@ -1731,7 +1770,7 @@ router.post(
       // Get user from database to get role and other info
       const [users] = await db.query(
         "SELECT id, username, email, role FROM users WHERE id = ?",
-        [userId]
+        [userId],
       );
 
       if (users.length === 0) {
@@ -1771,7 +1810,7 @@ router.post(
       // Update user with Tuya user ID if not already set
       await db.query(
         "UPDATE users SET tuya_user_id = ? WHERE id = ? AND tuya_user_id IS NULL",
-        [tuya_user_id, userId]
+        [tuya_user_id, userId],
       );
 
       // Log the action
@@ -1786,7 +1825,7 @@ router.post(
             role: user.role,
             addedBy: req.user.role,
           }),
-        ]
+        ],
       );
 
       logger.info("User added as Tuya device user", {
@@ -1809,7 +1848,7 @@ router.post(
         details: error.message,
       });
     }
-  }
+  },
 );
 
 // Delete Tuya device user (admin only)
@@ -1846,7 +1885,7 @@ router.delete(
         details: error.message,
       });
     }
-  }
+  },
 );
 
 // Get detailed Tuya device user information (admin only)
@@ -1896,7 +1935,7 @@ router.get(
       if (userData.contact) {
         const [matchedUsers] = await db.query(
           "SELECT * FROM users WHERE email = ? OR username = ? LIMIT 1",
-          [userData.contact, userData.contact]
+          [userData.contact, userData.contact],
         );
         if (matchedUsers.length > 0) {
           localUser = {
@@ -1929,8 +1968,14 @@ router.get(
         });
 
         if (listResult) {
-          const users = listResult.records || listResult.list || (Array.isArray(listResult) ? listResult : []);
-          const matchingUser = users.find((u) => u.user_id === userId || u.lock_user_id?.toString() === userId);
+          const users =
+            listResult.records ||
+            listResult.list ||
+            (Array.isArray(listResult) ? listResult : []);
+          const matchingUser = users.find(
+            (u) =>
+              u.user_id === userId || u.lock_user_id?.toString() === userId,
+          );
 
           if (matchingUser) {
             effectiveFlag = matchingUser.effective_flag;
@@ -1939,7 +1984,10 @@ router.get(
             avatarUrl = matchingUser.avatar_url;
 
             // Process unlock methods
-            if (matchingUser.unlock_detail && Array.isArray(matchingUser.unlock_detail)) {
+            if (
+              matchingUser.unlock_detail &&
+              Array.isArray(matchingUser.unlock_detail)
+            ) {
               unlockDetail = matchingUser.unlock_detail;
               unlockMethods = [];
               matchingUser.unlock_detail.forEach((detail) => {
@@ -1947,7 +1995,8 @@ router.get(
                   detail.unlock_list.forEach((unlock) => {
                     unlockMethods.push({
                       type: detail.dp_code,
-                      unlockName: unlock.unlock_name || `SN: ${unlock.unlock_sn}`,
+                      unlockName:
+                        unlock.unlock_name || `SN: ${unlock.unlock_sn}`,
                       unlockSn: unlock.unlock_sn,
                       unlockId: unlock.unlock_id,
                       admin: unlock.admin,
@@ -1968,7 +2017,10 @@ router.get(
       } catch (listError) {
         // If fetching from list fails, continue with undefined values
         // Frontend will handle missing fields gracefully
-        logger.warn("Failed to fetch additional user info from list:", listError.message);
+        logger.warn(
+          "Failed to fetch additional user info from list:",
+          listError.message,
+        );
       }
 
       // Format response to match expected frontend structure (TuyaUser interface)
@@ -2018,7 +2070,7 @@ router.get(
         details: error.message,
       });
     }
-  }
+  },
 );
 
 // Allocate unlocking method (password/card/fingerprint) to a Tuya device user
@@ -2034,7 +2086,7 @@ router.post(
       .isString()
       .isLength({ min: 6, max: 7 })
       .withMessage(
-        "password must be 6-7 digits (6 for Zigbee/Bluetooth, 7 for Wi-Fi)"
+        "password must be 6-7 digits (6 for Zigbee/Bluetooth, 7 for Wi-Fi)",
       ),
     body("validFrom")
       .isISO8601()
@@ -2068,13 +2120,13 @@ router.post(
       .optional()
       .isInt()
       .withMessage(
-        "schedule_list working_day must be integer (1=Sun, 2=Mon, 4=Tue, 8=Wed, 16=Thu, 32=Fri, 64=Sat)"
+        "schedule_list working_day must be integer (1=Sun, 2=Mon, 4=Tue, 8=Wed, 16=Thu, 32=Fri, 64=Sat)",
       ),
     body("relate_dev_list")
       .optional()
       .isArray()
       .withMessage(
-        "relate_dev_list must be an array (for Bluetooth locks only)"
+        "relate_dev_list must be an array (for Bluetooth locks only)",
       ),
   ],
   validate,
@@ -2174,7 +2226,7 @@ router.post(
         details: error.message,
       });
     }
-  }
+  },
 );
 
 module.exports = router;

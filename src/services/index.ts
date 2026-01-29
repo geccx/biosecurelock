@@ -126,3 +126,11 @@ export type {
   AvailablePermissions,
   UpdateRolePrivilegesData,
 } from "./rolePrivileges.service";
+
+export { semesterService } from "./semester.service";
+export type {
+  Semester,
+  CreateSemesterData,
+  UpdateSemesterData,
+  SemesterFilters,
+} from "./semester.service";
