@@ -2,6 +2,10 @@ const cron = require("node-cron");
 const tuyaService = require("./tuya.service");
 const fabricService = require("./fabric.service");
 const notificationService = require("./notification.service");
+const tuyaSync = require("./tuyaSync.service");
+const logRetrieval = require("./logRetrieval.service");
+const reconciliation = require("./reconciliation.service");
+const deviceStatusMonitor = require("./deviceStatusMonitor.service");
 const db = require("../models/mysql.models");
 const logger = require("../utils/logger");
 
@@ -25,7 +29,7 @@ class SchedulerService {
       "schedule_checker",
       cron.schedule("* * * * *", async () => {
         await this.checkSchedules();
-      })
+      }),
     );
 
     // Sync unlock logs every 5 minutes
@@ -33,7 +37,7 @@ class SchedulerService {
       "log_sync",
       cron.schedule("*/5 * * * *", async () => {
         await this.syncUnlockLogs();
-      })
+      }),
     );
 
     // Retry pending user creations every 2 minutes
@@ -41,7 +45,7 @@ class SchedulerService {
       "retry_user_creation",
       cron.schedule("*/2 * * * *", async () => {
         await this.retryPendingUserCreations();
-      })
+      }),
     );
 
     // Monitor device health and resync users every 3 minutes
@@ -49,7 +53,67 @@ class SchedulerService {
       "device_monitor",
       cron.schedule("*/3 * * * *", async () => {
         await this.monitorDeviceAndResync();
-      })
+      }),
+    );
+
+    // Sync retention: device status every 2 minutes
+    this.jobs.set(
+      "sync_device_status",
+      cron.schedule("*/2 * * * *", async () => {
+        try {
+          await deviceStatusMonitor.checkAllDevices();
+        } catch (err) {
+          logger.warn("Sync device status job failed", { error: err.message });
+        }
+      }),
+    );
+
+    // Sync retention: log retrieval from TUYA every 5 minutes
+    this.jobs.set(
+      "sync_log_retrieval",
+      cron.schedule("*/5 * * * *", async () => {
+        try {
+          await logRetrieval.pollAllDevices();
+        } catch (err) {
+          logger.warn("Sync log retrieval job failed", { error: err.message });
+        }
+      }),
+    );
+
+    // Sync retention: process sync queue every 10 minutes
+    this.jobs.set(
+      "sync_queue_process",
+      cron.schedule("*/10 * * * *", async () => {
+        try {
+          await tuyaSync.processSyncQueue();
+        } catch (err) {
+          logger.warn("Sync queue process job failed", { error: err.message });
+        }
+      }),
+    );
+
+    // Sync retention: reconciliation (gaps + missed events) every 15 minutes
+    this.jobs.set(
+      "sync_reconciliation",
+      cron.schedule("*/15 * * * *", async () => {
+        try {
+          await reconciliation.runReconciliation();
+        } catch (err) {
+          logger.warn("Sync reconciliation job failed", { error: err.message });
+        }
+      }),
+    );
+
+    // Sync retention: extended offline alert every 30 minutes
+    this.jobs.set(
+      "sync_offline_alert",
+      cron.schedule("*/30 * * * *", async () => {
+        try {
+          await deviceStatusMonitor.detectExtendedOfflineAndAlert();
+        } catch (err) {
+          logger.warn("Sync offline alert job failed", { error: err.message });
+        }
+      }),
     );
 
     this.isInitialized = true;
@@ -72,14 +136,14 @@ class SchedulerService {
                 AND JSON_CONTAINS(s.days_of_week, '"${currentDay}"')
                 AND s.start_time <= ? 
                 AND s.end_time >= ?`,
-        [currentTime, currentTime]
+        [currentTime, currentTime],
       );
 
       for (const schedule of schedules) {
         // Check if user has permission via Fabric
         const permission = await fabricService.checkAccessPermission(
           schedule.user_id,
-          "unlock"
+          "unlock",
         );
 
         if (!permission.allowed) {
@@ -96,7 +160,7 @@ class SchedulerService {
                     WHERE user_id = ? 
                     AND access_method = 'auto_schedule'
                     AND accessed_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE)`,
-          [schedule.user_id]
+          [schedule.user_id],
         );
 
         if (recentLogs.length > 0) {
@@ -116,7 +180,11 @@ class SchedulerService {
   // Perform automatic unlock based on schedule
   async performAutoUnlock(schedule) {
     // Skip if Tuya credentials not configured
-    if (!process.env.TUYA_CLIENT_ID || !process.env.TUYA_CLIENT_SECRET || !process.env.TUYA_DEVICE_ID) {
+    if (
+      !process.env.TUYA_CLIENT_ID ||
+      !process.env.TUYA_CLIENT_SECRET ||
+      !process.env.TUYA_DEVICE_ID
+    ) {
       logger.warn("Tuya credentials not configured, skipping auto-unlock");
       return;
     }
@@ -138,7 +206,7 @@ class SchedulerService {
                 AND status = 'approved' 
                 AND tuya_unlock_id IS NOT NULL
                 LIMIT 1`,
-        [schedule.user_id]
+        [schedule.user_id],
       );
 
       let tuyaResult;
@@ -164,7 +232,7 @@ class SchedulerService {
           scheduleId: schedule.id,
           scheduleName: schedule.schedule_name,
           autoUnlock: true,
-        }
+        },
       );
 
       // Log in MySQL
@@ -177,7 +245,7 @@ class SchedulerService {
           unlockMethod,
           fabricResult?.txId || null,
           JSON.stringify(tuyaResult),
-        ]
+        ],
       );
 
       // Log system activity
@@ -194,7 +262,7 @@ class SchedulerService {
             scheduleName: schedule.schedule_name,
           }),
           fabricResult?.txId || null,
-        ]
+        ],
       );
 
       await connection.commit();
@@ -213,7 +281,7 @@ class SchedulerService {
           `INSERT INTO access_logs 
                     (user_id, access_method, access_type, success, device_response) 
                     VALUES (?, 'auto_schedule', 'unlock', false, ?)`,
-          [schedule.user_id, JSON.stringify({ error: error.message })]
+          [schedule.user_id, JSON.stringify({ error: error.message })],
         );
         await connection.commit();
       } catch (logError) {
@@ -227,7 +295,11 @@ class SchedulerService {
   // Sync unlock logs from Tuya to local database
   async syncUnlockLogs() {
     // Skip if Tuya credentials not configured
-    if (!process.env.TUYA_CLIENT_ID || !process.env.TUYA_CLIENT_SECRET || !process.env.TUYA_DEVICE_ID) {
+    if (
+      !process.env.TUYA_CLIENT_ID ||
+      !process.env.TUYA_CLIENT_SECRET ||
+      !process.env.TUYA_DEVICE_ID
+    ) {
       logger.debug("Tuya credentials not configured, skipping log sync");
       return;
     }
@@ -261,7 +333,7 @@ class SchedulerService {
             `SELECT id FROM access_logs 
                         WHERE tuya_unlock_id = ? 
                         AND accessed_at = FROM_UNIXTIME(?)`,
-            [record.unlock_id || record.id, record.unlock_time]
+            [record.unlock_id || record.id, record.unlock_time],
           );
 
           if (existing.length > 0) {
@@ -276,7 +348,7 @@ class SchedulerService {
             `SELECT user_id FROM enrollment_requests 
                         WHERE tuya_unlock_id = ? 
                         AND status = 'approved'`,
-            [record.unlock_id || record.unlock_name_value]
+            [record.unlock_id || record.unlock_name_value],
           );
 
           const userId = enrollments.length > 0 ? enrollments[0].user_id : null;
@@ -292,7 +364,7 @@ class SchedulerService {
               record.unlock_id || record.id,
               record.unlock_time,
               JSON.stringify(record),
-            ]
+            ],
           );
 
           // Log on Fabric if user identified
@@ -307,7 +379,7 @@ class SchedulerService {
                 {
                   tuyaUnlockId: record.unlock_id,
                   synced: true,
-                }
+                },
               );
             } catch (fabricError) {
               logger.error("Error logging to Fabric:", fabricError);
@@ -367,7 +439,7 @@ class SchedulerService {
           scheduleData.endTime,
           scheduleData.isActive !== false,
           scheduleData.autoUnlock || false,
-        ]
+        ],
       );
 
       const scheduleId = result.insertId;
@@ -382,7 +454,7 @@ class SchedulerService {
           `Schedule ${scheduleData.name} created`,
           scheduleData.userId,
           JSON.stringify({ scheduleId, ...scheduleData }),
-        ]
+        ],
       );
 
       await connection.commit();
@@ -441,7 +513,7 @@ class SchedulerService {
 
       await connection.query(
         `UPDATE access_schedules SET ${updates.join(", ")} WHERE id = ?`,
-        values
+        values,
       );
 
       await connection.commit();
@@ -468,7 +540,7 @@ class SchedulerService {
   async getUserSchedules(userId) {
     const [schedules] = await db.query(
       "SELECT * FROM access_schedules WHERE user_id = ? ORDER BY created_at DESC",
-      [userId]
+      [userId],
     );
     return schedules;
   }
@@ -480,7 +552,11 @@ class SchedulerService {
    */
   async retryPendingUserCreations() {
     // Skip if Tuya credentials not configured
-    if (!process.env.TUYA_CLIENT_ID || !process.env.TUYA_CLIENT_SECRET || !process.env.TUYA_DEVICE_ID) {
+    if (
+      !process.env.TUYA_CLIENT_ID ||
+      !process.env.TUYA_CLIENT_SECRET ||
+      !process.env.TUYA_DEVICE_ID
+    ) {
       return;
     }
 
@@ -497,7 +573,10 @@ class SchedulerService {
           isDeviceOnline = deviceInfo.online === true;
         }
       } catch (statusError) {
-        logger.debug("Failed to check device status for user creation retry:", statusError.message);
+        logger.debug(
+          "Failed to check device status for user creation retry:",
+          statusError.message,
+        );
         return; // Skip if we can't check device status
       }
 
@@ -512,14 +591,16 @@ class SchedulerService {
          WHERE sync_status = 'pending' 
          AND retry_count < 10
          ORDER BY created_at ASC
-         LIMIT 10`
+         LIMIT 10`,
       );
 
       if (pendingCreations.length === 0) {
         return; // No pending creations
       }
 
-      logger.info(`Retrying ${pendingCreations.length} pending user creation(s)`);
+      logger.info(
+        `Retrying ${pendingCreations.length} pending user creation(s)`,
+      );
 
       for (const backup of pendingCreations) {
         const connection = await db.getConnection();
@@ -539,7 +620,7 @@ class SchedulerService {
           // Check if user still exists
           const [users] = await connection.query(
             "SELECT id, email, tuya_user_id FROM users WHERE id = ?",
-            [backup.user_id]
+            [backup.user_id],
           );
 
           if (users.length === 0) {
@@ -551,7 +632,7 @@ class SchedulerService {
                    retry_count = retry_count + 1,
                    last_retry_at = NOW()
                WHERE id = ?`,
-              [backup.id]
+              [backup.id],
             );
             await connection.commit();
             continue;
@@ -575,10 +656,13 @@ class SchedulerService {
               (Array.isArray(deviceUsers) ? deviceUsers : []);
 
             userAlreadyInDevice = usersList.some(
-              (du) => du.uid === user.tuya_user_id || du.user_contact === user.email
+              (du) =>
+                du.uid === user.tuya_user_id || du.user_contact === user.email,
             );
           } catch (checkError) {
-            logger.warn(`Failed to check if user exists in device: ${checkError.message}`);
+            logger.warn(
+              `Failed to check if user exists in device: ${checkError.message}`,
+            );
           }
 
           if (userAlreadyInDevice) {
@@ -590,10 +674,12 @@ class SchedulerService {
                    retry_count = retry_count + 1,
                    last_retry_at = NOW()
                WHERE id = ?`,
-              [backup.id]
+              [backup.id],
             );
             await connection.commit();
-            logger.info(`User ${user.email} already exists in device, marked as synced`);
+            logger.info(
+              `User ${user.email} already exists in device, marked as synced`,
+            );
             continue;
           }
 
@@ -601,7 +687,7 @@ class SchedulerService {
           try {
             const tuyaDeviceUser = await tuyaService.addDeviceUser(
               deviceId,
-              deviceUserData
+              deviceUserData,
             );
 
             // Success - mark as synced
@@ -613,12 +699,14 @@ class SchedulerService {
                    retry_count = retry_count + 1,
                    last_retry_at = NOW()
                WHERE id = ?`,
-              [backup.id]
+              [backup.id],
             );
 
             await connection.commit();
 
-            logger.info(`Successfully synced user ${user.email} to device (backup ID: ${backup.id})`);
+            logger.info(
+              `Successfully synced user ${user.email} to device (backup ID: ${backup.id})`,
+            );
 
             // Log the successful sync
             await db.query(
@@ -632,7 +720,7 @@ class SchedulerService {
                   backupId: backup.id,
                   retryCount: backup.retry_count + 1,
                 }),
-              ]
+              ],
             );
           } catch (addError) {
             // Failed to add user - increment retry count
@@ -651,18 +739,21 @@ class SchedulerService {
                 errorMessage,
                 newRetryCount,
                 backup.id,
-              ]
+              ],
             );
 
             await connection.commit();
 
             logger.warn(
-              `Failed to sync user ${user.email} to device (retry ${newRetryCount}/10): ${errorMessage}`
+              `Failed to sync user ${user.email} to device (retry ${newRetryCount}/10): ${errorMessage}`,
             );
           }
         } catch (error) {
           await connection.rollback();
-          logger.error(`Error processing user creation backup ${backup.id}:`, error);
+          logger.error(
+            `Error processing user creation backup ${backup.id}:`,
+            error,
+          );
         } finally {
           connection.release();
         }
@@ -697,7 +788,10 @@ class SchedulerService {
         isOnline = deviceInfo.online === true;
       }
     } catch (error) {
-      logger.warn("Failed to check device status in monitorDeviceAndResync:", error.message);
+      logger.warn(
+        "Failed to check device status in monitorDeviceAndResync:",
+        error.message,
+      );
       return;
     }
 
@@ -707,7 +801,7 @@ class SchedulerService {
       await notificationService.notifyAdminsAndTechSupport(
         notificationService.NOTIFICATION_TYPES.DEVICE_ERROR,
         "Door lock device offline",
-        "The Tuya door lock device is offline. User enrollments will be retried when it comes back online."
+        "The Tuya door lock device is offline. User enrollments will be retried when it comes back online.",
       );
       logger.warn("Device is offline; admins/techsupport notified");
       return;
@@ -718,7 +812,7 @@ class SchedulerService {
       await notificationService.notifyAdminsAndTechSupport(
         notificationService.NOTIFICATION_TYPES.DEVICE_ERROR,
         "Door lock device back online",
-        "The Tuya door lock device is back online. Pending user enrollments will now be synced."
+        "The Tuya door lock device is back online. Pending user enrollments will now be synced.",
       );
       logger.info("Device came online; starting resync of local users");
       await this.resyncMissingDeviceUsers(deviceId);
@@ -745,13 +839,15 @@ class SchedulerService {
         [];
 
       const deviceUserSet = new Set(
-        deviceUsers.map((u) => u.uid || u.user_contact || u.user_id || u.lock_user_id)
+        deviceUsers.map(
+          (u) => u.uid || u.user_contact || u.user_id || u.lock_user_id,
+        ),
       );
 
       const [localUsers] = await db.query(
         `SELECT id, username, email, role, tuya_user_id 
          FROM users 
-         WHERE status = 'active' AND role != 'owner'`
+         WHERE status = 'active' AND role != 'owner'`,
       );
 
       for (const user of localUsers) {
@@ -770,7 +866,7 @@ class SchedulerService {
            WHERE user_id = ? 
            ORDER BY created_at DESC 
            LIMIT 1`,
-          [user.id]
+          [user.id],
         );
 
         let deviceUserData = null;
@@ -779,7 +875,10 @@ class SchedulerService {
             const apiParams = JSON.parse(backups[0].api_params || "{}");
             deviceUserData = apiParams.deviceUserData || null;
           } catch (parseErr) {
-            logger.warn(`Failed to parse api_params for user ${user.id}:`, parseErr.message);
+            logger.warn(
+              `Failed to parse api_params for user ${user.id}:`,
+              parseErr.message,
+            );
           }
         }
 
@@ -808,14 +907,14 @@ class SchedulerService {
                    retry_count = retry_count + 1, 
                    last_retry_at = NOW() 
                WHERE id = ?`,
-              [backups[0].id]
+              [backups[0].id],
             );
           }
 
           logger.info(`Resynced user ${user.email || user.id} to device`);
         } catch (addErr) {
           logger.warn(
-            `Failed to resync user ${user.email || user.id} to device: ${addErr.message}`
+            `Failed to resync user ${user.email || user.id} to device: ${addErr.message}`,
           );
         }
       }

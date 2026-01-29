@@ -54,6 +54,7 @@ const notificationPreferencesRoutes = require("./routes/notificationPreferences.
 const passwordRequestsRoutes = require("./routes/passwordRequests.routes");
 const rolePrivilegesRoutes = require("./routes/rolePrivileges.routes");
 const semesterRoutes = require("./routes/semester.routes");
+const syncRoutes = require("./routes/sync.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -106,6 +107,7 @@ app.use("/api/notifications", notificationPreferencesRoutes);
 app.use("/api/password-requests", passwordRequestsRoutes);
 app.use("/api/role-privileges", rolePrivilegesRoutes);
 app.use("/api/admin", semesterRoutes);
+app.use("/api/sync", syncRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

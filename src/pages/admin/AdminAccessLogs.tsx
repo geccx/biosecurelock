@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
-import { ShieldCheckIcon, DatabaseIcon } from "lucide-react";
+import {
+  ShieldCheckIcon,
+  DatabaseIcon,
+  RefreshCwIcon,
+  AlertTriangleIcon,
+} from "lucide-react";
 import { Card } from "../../components/common/Card";
 import { Badge } from "../../components/common/Badge";
+import { Button } from "../../components/common/Button";
 import { Table } from "../../components/common/Table";
-import { logsService } from "../../services";
+import { logsService, syncService } from "../../services";
+import type { LogGap } from "../../services";
+import { useAlert } from "../../contexts/AlertContext";
 import "../../styles/AdminAccess.css";
 
 interface LogDisplay {
@@ -30,6 +38,10 @@ interface LogDisplay {
     media_url?: string;
     media_key?: string;
   }>;
+  /** Sync/retention: event occurred while device was offline */
+  offlineFlag?: boolean;
+  /** Sync/retention: realtime | buffered | reconciled */
+  retrievalStatus?: string;
 }
 
 interface SystemLogDisplay {
@@ -47,14 +59,16 @@ interface SystemLogDisplay {
 }
 
 export function AdminAccessLogs() {
+  const { showAlert } = useAlert();
   const [logs, setLogs] = useState<LogDisplay[]>([]);
   const [systemLogs, setSystemLogs] = useState<SystemLogDisplay[]>([]);
-  const [activeTab, setActiveTab] = useState<"access" | "activities">(
-    "access"
-  );
+  const [activeTab, setActiveTab] = useState<"access" | "activities">("access");
   const [loading, setLoading] = useState(true);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [tuyaLoading, setTuyaLoading] = useState(false);
+  const [retrieving, setRetrieving] = useState(false);
+  const [gaps, setGaps] = useState<LogGap[]>([]);
+  const [showGaps, setShowGaps] = useState(false);
 
   useEffect(() => {
     const loadAllData = async () => {
@@ -82,15 +96,25 @@ export function AdminAccessLogs() {
             laboratory: log.laboratory || null,
             labName: log.laboratory || "Laboratory",
             timestamp: new Date(log.timestamp),
-            dateTime: log.dateTime ? new Date(log.dateTime) : new Date(log.timestamp),
+            dateTime: log.dateTime
+              ? new Date(log.dateTime)
+              : new Date(log.timestamp),
             accessMethod: log.accessMethod || "Unknown",
             blockchainHash: log.blockchainHash || "",
             status: log.success ? "granted" : "denied",
             result: log.result || (log.success ? "Granted" : "Denied"),
             reasonForDenial: log.reasonForDenial || null,
             source: "system" as const,
+            offlineFlag:
+              log.offlineFlag ??
+              (log as Record<string, unknown>).offline_flag === true,
+            retrievalStatus:
+              log.retrievalStatus ??
+              ((log as Record<string, unknown>).retrieval_status as
+                | string
+                | undefined),
           }));
-        
+
         setLogs(systemLogs);
       }
     } catch (error) {
@@ -121,14 +145,18 @@ export function AdminAccessLogs() {
               activityType: log.eventType || "System Activity",
               userId: log.userId?.toString() || "unknown",
               username: log.username || "Unknown",
-              role: log.role || (details.role as string) || (details.userLevel as string) || null,
+              role:
+                log.role ||
+                (details.role as string) ||
+                (details.userLevel as string) ||
+                null,
               timestamp: new Date(log.timestamp),
               txId: null,
               details: details,
               eventType: log.eventType || "unknown",
               eventDescription: eventDescription,
             };
-          })
+          }),
         );
       }
     } catch (error) {
@@ -157,10 +185,10 @@ export function AdminAccessLogs() {
         const tuyaLogsData = response.data.map((log, index) => {
           const unlockCode = log.status?.code || "unknown";
           const unlockMethod = getUnlockMethodName(unlockCode);
-          
+
           // Handle status.value which can be string, number, or object per API docs
           const unlockValue = log.status?.value;
-          
+
           return {
             id: `tuya-${log.update_time}-${index}`,
             unlockMethod,
@@ -171,7 +199,7 @@ export function AdminAccessLogs() {
             userId: log.user_id || "0",
             timestamp: new Date(log.update_time),
             avatar: log.avatar,
-            mediaInfos: log.media_infos?.map(media => ({
+            mediaInfos: log.media_infos?.map((media) => ({
               file_key: media.file_key,
               file_url: media.file_url,
               media_url: media.media_url,
@@ -179,12 +207,15 @@ export function AdminAccessLogs() {
             })),
           };
         });
-        
+
         // Merge Tuya logs into main logs array
         setLogs((prevLogs) => {
           const tuyaMergedLogs = tuyaLogsData.map((tuyaLog) => ({
             id: tuyaLog.id,
-            userName: tuyaLog.nickName || tuyaLog.unlockName || `User ${tuyaLog.userId}`,
+            userName:
+              tuyaLog.nickName ||
+              tuyaLog.unlockName ||
+              `User ${tuyaLog.userId}`,
             userRole: null,
             labName: "Laboratory",
             timestamp: tuyaLog.timestamp,
@@ -196,11 +227,13 @@ export function AdminAccessLogs() {
             avatar: tuyaLog.avatar,
             mediaInfos: tuyaLog.mediaInfos,
           }));
-          
+
           const mergedLogs = [...prevLogs, ...tuyaMergedLogs];
-          
+
           // Sort by timestamp (newest first)
-          return mergedLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+          return mergedLogs.sort(
+            (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+          );
         });
       }
     } catch (error) {
@@ -226,7 +259,13 @@ export function AdminAccessLogs() {
       unlock_ble: "Bluetooth",
       unlock_zigbee: "Zigbee",
     };
-    return methodMap[code] || code.replace("unlock_", "").replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    return (
+      methodMap[code] ||
+      code
+        .replace("unlock_", "")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (l) => l.toUpperCase())
+    );
   };
 
   if (loading) {
@@ -236,6 +275,51 @@ export function AdminAccessLogs() {
       </div>
     );
   }
+
+  const handleRetrieveLogs = async () => {
+    setRetrieving(true);
+    try {
+      const res = await syncService.retrieveLogs();
+      if (res.success) {
+        const data = res.data as {
+          inserted?: number;
+          duplicates?: number;
+          devices?: Record<string, { inserted: number; duplicates: number }>;
+        };
+        const inserted =
+          typeof data?.inserted === "number"
+            ? data.inserted
+            : ((data?.devices &&
+                Object.values(data.devices).reduce(
+                  (a, d) => a + (d?.inserted ?? 0),
+                  0,
+                )) ??
+              0);
+        showAlert(`Retrieved ${inserted} new log(s) from devices.`, "success");
+        await fetchData();
+      } else {
+        showAlert(res.error || "Retrieve failed", "error");
+      }
+    } catch (e: unknown) {
+      showAlert((e as Error).message || "Retrieve failed", "error");
+    } finally {
+      setRetrieving(false);
+    }
+  };
+
+  const handleViewGaps = async () => {
+    try {
+      const res = await syncService.getLogGaps();
+      if (res.success && res.data) {
+        setGaps(res.data);
+        setShowGaps(true);
+      } else {
+        showAlert(res.error || "Failed to load gaps", "error");
+      }
+    } catch (e: unknown) {
+      showAlert((e as Error).message || "Failed to load gaps", "error");
+    }
+  };
 
   const columns = [
     {
@@ -250,7 +334,7 @@ export function AdminAccessLogs() {
                 className="w-8 h-8 rounded-full object-cover"
                 onError={(e) => {
                   // Hide image if it fails to load
-                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.style.display = "none";
                 }}
               />
             )}
@@ -270,22 +354,19 @@ export function AdminAccessLogs() {
     },
     {
       header: "Role",
-      accessor: (log: LogDisplay) => (
+      accessor: (log: LogDisplay) =>
         log.userRole ? (
           <Badge variant="info" className="text-xs">
             {log.userRole}
           </Badge>
         ) : (
           <span className="text-gray-400 text-sm">N/A</span>
-        )
-      ),
+        ),
     },
     {
       header: "Subject",
       accessor: (log: LogDisplay) => (
-        <span className="text-sm text-gray-700">
-          {log.subject || "N/A"}
-        </span>
+        <span className="text-sm text-gray-700">{log.subject || "N/A"}</span>
       ),
     },
     {
@@ -305,9 +386,7 @@ export function AdminAccessLogs() {
             <div className="font-medium text-gray-900">
               {dateTime.toLocaleDateString()}
             </div>
-            <div className="text-gray-500">
-              {dateTime.toLocaleTimeString()}
-            </div>
+            <div className="text-gray-500">{dateTime.toLocaleTimeString()}</div>
           </div>
         );
       },
@@ -321,16 +400,15 @@ export function AdminAccessLogs() {
               <Badge variant="info">{log.unlockMethod || "Unknown"}</Badge>
               {log.unlockValue !== undefined && log.unlockValue !== null && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Value: {typeof log.unlockValue === 'object' 
-                    ? JSON.stringify(log.unlockValue) 
+                  Value:{" "}
+                  {typeof log.unlockValue === "object"
+                    ? JSON.stringify(log.unlockValue)
                     : String(log.unlockValue)}
                 </p>
               )}
             </>
           ) : (
-            <Badge variant="info">
-              {log.accessMethod || "Unknown"}
-            </Badge>
+            <Badge variant="info">{log.accessMethod || "Unknown"}</Badge>
           )}
         </div>
       ),
@@ -338,21 +416,50 @@ export function AdminAccessLogs() {
     {
       header: "Result",
       accessor: (log: LogDisplay) => (
-        <Badge variant={log.status === "granted" || log.result === "Granted" ? "success" : "danger"}>
+        <Badge
+          variant={
+            log.status === "granted" || log.result === "Granted"
+              ? "success"
+              : "danger"
+          }
+        >
           {log.result || (log.status === "granted" ? "Granted" : "Denied")}
         </Badge>
       ),
     },
     {
       header: "Reason for Denial",
-      accessor: (log: LogDisplay) => (
+      accessor: (log: LogDisplay) =>
         log.reasonForDenial ? (
           <span className="text-sm text-red-600 italic">
             {log.reasonForDenial}
           </span>
         ) : (
           <span className="text-gray-400 text-sm">—</span>
-        )
+        ),
+    },
+    {
+      header: "Sync",
+      accessor: (log: LogDisplay) => (
+        <div className="flex flex-wrap gap-1">
+          {log.offlineFlag && (
+            <Badge
+              variant="warning"
+              className="text-xs"
+              title="Event occurred while device was offline"
+            >
+              Offline
+            </Badge>
+          )}
+          {log.retrievalStatus && log.retrievalStatus !== "realtime" && (
+            <Badge variant="info" className="text-xs" title="Retrieval status">
+              {log.retrievalStatus}
+            </Badge>
+          )}
+          {!log.offlineFlag && !log.retrievalStatus && (
+            <span className="text-gray-400 text-xs">—</span>
+          )}
+        </div>
       ),
     },
     {
@@ -366,7 +473,9 @@ export function AdminAccessLogs() {
                   {log.mediaInfos.map((media, idx) => {
                     // Prefer media_url over file_url per API docs
                     const mediaUrl = media.media_url || media.file_url;
-                    const isImage = media.file_key?.includes("image") || media.media_key?.includes("image");
+                    const isImage =
+                      media.file_key?.includes("image") ||
+                      media.media_key?.includes("image");
                     return (
                       <a
                         key={idx}
@@ -397,15 +506,16 @@ export function AdminAccessLogs() {
     },
   ];
 
-
   // Helper function to categorize event types
-  const getEventCategory = (eventType: string): {
+  const getEventCategory = (
+    eventType: string,
+  ): {
     category: string;
     variant: "info" | "success" | "warning" | "danger" | "default";
     icon: string;
   } => {
     const lowerType = eventType.toLowerCase();
-    
+
     // Login/Logout events
     if (lowerType.includes("login") || lowerType === "user_login") {
       return { category: "Login", variant: "info", icon: "🔐" };
@@ -413,7 +523,7 @@ export function AdminAccessLogs() {
     if (lowerType.includes("logout") || lowerType === "user_logout") {
       return { category: "Logout", variant: "info", icon: "🚪" };
     }
-    
+
     // Approval events
     if (
       lowerType.includes("approval") ||
@@ -425,7 +535,7 @@ export function AdminAccessLogs() {
     if (lowerType.includes("rejected") || lowerType.includes("reject")) {
       return { category: "Approval", variant: "danger", icon: "❌" };
     }
-    
+
     // Update events
     if (
       lowerType.includes("update") ||
@@ -435,20 +545,26 @@ export function AdminAccessLogs() {
     ) {
       return { category: "Update", variant: "warning", icon: "✏️" };
     }
-    
+
     // Enrollment events
     if (lowerType.includes("enrollment")) {
       return { category: "Enrollment", variant: "info", icon: "📝" };
     }
-    
+
     // User management
-    if (lowerType.includes("user_created") || lowerType.includes("user created")) {
+    if (
+      lowerType.includes("user_created") ||
+      lowerType.includes("user created")
+    ) {
       return { category: "User Management", variant: "success", icon: "👤" };
     }
-    if (lowerType.includes("user_deleted") || lowerType.includes("user deleted")) {
+    if (
+      lowerType.includes("user_deleted") ||
+      lowerType.includes("user deleted")
+    ) {
       return { category: "User Management", variant: "danger", icon: "🗑️" };
     }
-    
+
     // Default
     return { category: "System Activity", variant: "default", icon: "📋" };
   };
@@ -465,9 +581,7 @@ export function AdminAccessLogs() {
         return (
           <div className="flex items-center gap-2">
             <span className="text-lg">{category.icon}</span>
-            <Badge variant={category.variant}>
-              {category.category}
-            </Badge>
+            <Badge variant={category.variant}>{category.category}</Badge>
             <span className="text-xs text-gray-500 ml-1">
               ({log.eventType})
             </span>
@@ -515,15 +629,22 @@ export function AdminAccessLogs() {
           Object.entries(log.details).forEach(([key, value]) => {
             // Skip internal metadata fields
             if (
-              !["userLevel", "userId", "username", "role", "email", "timestamp", "eventDescription", "fabricTxId"].includes(
-                key
-              )
+              ![
+                "userLevel",
+                "userId",
+                "username",
+                "role",
+                "email",
+                "timestamp",
+                "eventDescription",
+                "fabricTxId",
+              ].includes(key)
             ) {
               relevantDetails[key] = value;
             }
           });
         }
-        
+
         return (
           <div className="text-xs text-gray-600 max-w-xs">
             {Object.keys(relevantDetails).length > 0 ? (
@@ -560,7 +681,8 @@ export function AdminAccessLogs() {
               Access & System Logs
             </h3>
             <p className="text-sm text-gray-600">
-              View door lock access logs and web system activities (login, logout, approvals, updates)
+              View door lock access logs and web system activities (login,
+              logout, approvals, updates)
             </p>
           </div>
         </div>
@@ -617,12 +739,16 @@ export function AdminAccessLogs() {
         <Card title="System Logs">
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600">
-              <strong>System Logs</strong> track web system activities including:
+              <strong>System Logs</strong> track web system activities
+              including:
             </p>
             <ul className="text-sm text-gray-600 mt-2 list-disc list-inside space-y-1">
               <li>Login and logout events</li>
               <li>Approval actions (enrollment approvals/rejections)</li>
-              <li>System updates (user updates, role changes, configuration changes)</li>
+              <li>
+                System updates (user updates, role changes, configuration
+                changes)
+              </li>
               <li>Other system activities</li>
             </ul>
           </div>
@@ -641,21 +767,67 @@ export function AdminAccessLogs() {
       )}
 
       {activeTab === "access" && (
-        <Card title="Access Logs">
+        <Card
+          title="Access Logs"
+          action={
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleRetrieveLogs}
+                disabled={retrieving}
+              >
+                <RefreshCwIcon
+                  className={`w-4 h-4 mr-1 ${retrieving ? "animate-spin" : ""}`}
+                />
+                Retrieve Logs
+              </Button>
+              <Button size="sm" variant="secondary" onClick={handleViewGaps}>
+                <AlertTriangleIcon className="w-4 h-4 mr-1" />
+                View Gaps
+              </Button>
+            </div>
+          }
+        >
+          {showGaps && gaps.length > 0 && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="font-medium text-amber-800 mb-2">
+                Missing log periods (gaps)
+              </p>
+              <ul className="text-sm text-amber-800 space-y-1">
+                {gaps.map((g) => (
+                  <li key={g.id}>
+                    Device {g.deviceId}: {new Date(g.gapStart).toLocaleString()}{" "}
+                    – {new Date(g.gapEnd).toLocaleString()} ({g.status})
+                  </li>
+                ))}
+              </ul>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mt-2"
+                onClick={() => setShowGaps(false)}
+              >
+                Close
+              </Button>
+            </div>
+          )}
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600">
-              <strong>Access Logs</strong> show which users accessed the door lock, including:
+              <strong>Access Logs</strong> show which users accessed the door
+              lock, including:
             </p>
             <ul className="text-sm text-gray-600 mt-2 list-disc list-inside space-y-1">
               <li>User name, role, and subject information</li>
               <li>Laboratory name and location</li>
               <li>Date and time of access</li>
               <li>Access method (PIN, RFID, Biometric, etc.)</li>
-              <li>Result (Granted/Denied) and reason for denial if applicable</li>
+              <li>
+                Result (Granted/Denied) and reason for denial if applicable
+              </li>
               <li>Blockchain transaction verification or media links</li>
             </ul>
           </div>
-          {(loading || tuyaLoading) ? (
+          {loading || tuyaLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
@@ -671,4 +843,3 @@ export function AdminAccessLogs() {
     </div>
   );
 }
-

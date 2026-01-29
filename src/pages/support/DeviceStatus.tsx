@@ -15,9 +15,11 @@ import {
   devicesService,
   dashboardService,
   systemConfigService,
+  syncService,
   type Device,
   type LockAndGatewayStatus,
   type DashboardStats,
+  type DeviceSyncStatus,
 } from "../../services";
 import { useAlert } from "../../contexts/AlertContext";
 
@@ -31,9 +33,10 @@ export function DeviceStatus() {
   const [gateway, setGateway] = useState<LockAndGatewayStatus | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [unlockingDevices, setUnlockingDevices] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [lockingDevices, setLockingDevices] = useState<Set<string>>(new Set());
+  const [syncStatuses, setSyncStatuses] = useState<DeviceSyncStatus[]>([]);
 
   useEffect(() => {
     fetchDevices();
@@ -41,12 +44,17 @@ export function DeviceStatus() {
 
   const fetchDevices = async () => {
     try {
-      // Fetch devices with Tuya status, lock/gateway status, and dashboard stats
-      const [devicesRes, lockGatewayRes, statsRes] = await Promise.all([
-        devicesService.getStatusWithTuya(),
-        devicesService.getLockAndGatewayStatus(),
-        dashboardService.getStats(),
-      ]);
+      // Fetch devices with Tuya status, lock/gateway status, dashboard stats, and sync status
+      const [devicesRes, lockGatewayRes, statsRes, syncRes] = await Promise.all(
+        [
+          devicesService.getStatusWithTuya(),
+          devicesService.getLockAndGatewayStatus(),
+          dashboardService.getStats(),
+          syncService
+            .getDevicesStatus()
+            .catch(() => ({ success: false, data: [] })),
+        ],
+      );
 
       if (devicesRes.success && devicesRes.data) {
         setDevices(devicesRes.data);
@@ -57,6 +65,9 @@ export function DeviceStatus() {
       }
       if (statsRes.success && statsRes.data) {
         setStats(statsRes.data);
+      }
+      if (syncRes.success && syncRes.data) {
+        setSyncStatuses(syncRes.data);
       }
     } catch (error) {
       console.error("Failed to fetch devices:", error);
@@ -77,12 +88,16 @@ export function DeviceStatus() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      // Refresh Tuya device status, lock/gateway status, and dashboard stats
-      const [devicesRes, lockGatewayRes, statsRes] = await Promise.all([
-        devicesService.getStatusWithTuya(),
-        devicesService.getLockAndGatewayStatus(),
-        dashboardService.getStats(),
-      ]);
+      const [devicesRes, lockGatewayRes, statsRes, syncRes] = await Promise.all(
+        [
+          devicesService.getStatusWithTuya(),
+          devicesService.getLockAndGatewayStatus(),
+          dashboardService.getStats(),
+          syncService
+            .getDevicesStatus()
+            .catch(() => ({ success: false, data: [] })),
+        ],
+      );
       if (devicesRes.success && devicesRes.data) {
         setDevices(devicesRes.data);
       }
@@ -92,6 +107,9 @@ export function DeviceStatus() {
       }
       if (statsRes.success && statsRes.data) {
         setStats(statsRes.data);
+      }
+      if (syncRes.success && syncRes.data) {
+        setSyncStatuses(syncRes.data);
       }
     } catch (error) {
       console.error("Failed to refresh devices:", error);
@@ -116,21 +134,21 @@ export function DeviceStatus() {
       if (response.success) {
         showAlert(
           `Device "${device.deviceName}" unlocked successfully!`,
-          "success"
+          "success",
         );
         // Refresh device status after unlock
         await handleRefresh();
       } else {
         showAlert(
           `Failed to unlock device: ${response.error || "Unknown error"}`,
-          "error"
+          "error",
         );
       }
     } catch (error: any) {
       console.error("Failed to unlock device:", error);
       showAlert(
         `Failed to unlock device: ${error.message || "Unknown error"}`,
-        "error"
+        "error",
       );
     } finally {
       setUnlockingDevices((prev) => {
@@ -155,21 +173,21 @@ export function DeviceStatus() {
       if (response.success) {
         showAlert(
           `Device "${device.deviceName}" lock command sent successfully!`,
-          "success"
+          "success",
         );
         // Refresh device status after lock
         await handleRefresh();
       } else {
         showAlert(
           `Failed to lock device: ${response.error || "Unknown error"}`,
-          "error"
+          "error",
         );
       }
     } catch (error: any) {
       console.error("Failed to lock device:", error);
       showAlert(
         `Failed to lock device: ${error.message || "Unknown error"}`,
-        "error"
+        "error",
       );
     } finally {
       setLockingDevices((prev) => {
@@ -263,6 +281,67 @@ export function DeviceStatus() {
         </Card>
       </div>
 
+      {syncStatuses.length > 0 && (
+        <Card title="Sync Health (Local Data Retention)">
+          <p className="text-sm text-gray-600 mb-4">
+            Last sync times and connectivity for TUYA devices. Used for offline
+            log retrieval and credential sync.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2">Device</th>
+                  <th className="text-left py-2">Connectivity</th>
+                  <th className="text-left py-2">Last Sync</th>
+                  <th className="text-left py-2">Last Log Retrieval</th>
+                  <th className="text-left py-2">Pending</th>
+                </tr>
+              </thead>
+              <tbody>
+                {syncStatuses.map((s) => (
+                  <tr key={s.id} className="border-b border-gray-100">
+                    <td className="py-2 font-medium">{s.deviceName}</td>
+                    <td className="py-2">
+                      <Badge
+                        variant={
+                          s.connectivityStatus === "online"
+                            ? "success"
+                            : s.connectivityStatus === "offline"
+                              ? "default"
+                              : "warning"
+                        }
+                      >
+                        {s.connectivityStatus}
+                      </Badge>
+                    </td>
+                    <td className="py-2 text-gray-600">
+                      {s.lastSuccessfulSync
+                        ? new Date(s.lastSuccessfulSync).toLocaleString()
+                        : "—"}
+                    </td>
+                    <td className="py-2 text-gray-600">
+                      {s.lastLogRetrieval
+                        ? new Date(s.lastLogRetrieval).toLocaleString()
+                        : "—"}
+                    </td>
+                    <td className="py-2">
+                      {s.pendingCredentials > 0 || s.pendingSchedules > 0 ? (
+                        <span className="text-amber-600">
+                          {s.pendingCredentials + s.pendingSchedules} pending
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       <Card
         title="Device Status Monitor"
         action={
@@ -283,8 +362,8 @@ export function DeviceStatus() {
                   device.status === "online"
                     ? "border-green-200 bg-green-50"
                     : device.status === "error"
-                    ? "border-red-200 bg-red-50"
-                    : "border-gray-200 bg-gray-50"
+                      ? "border-red-200 bg-red-50"
+                      : "border-gray-200 bg-gray-50"
                 }`}
               >
                 <div className="flex items-start justify-between mb-3">
@@ -304,8 +383,8 @@ export function DeviceStatus() {
                       device.status === "online"
                         ? "success"
                         : device.status === "error"
-                        ? "danger"
-                        : "default"
+                          ? "danger"
+                          : "default"
                     }
                   >
                     {device.status}
@@ -339,9 +418,13 @@ export function DeviceStatus() {
                       )}
                       {device.tuyaDetails.activeTime && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Activation Time:</span>
+                          <span className="text-gray-600">
+                            Activation Time:
+                          </span>
                           <span className="font-medium text-gray-900">
-                            {new Date(device.tuyaDetails.activeTime * 1000).toLocaleString()}
+                            {new Date(
+                              device.tuyaDetails.activeTime * 1000,
+                            ).toLocaleString()}
                           </span>
                         </div>
                       )}
@@ -384,14 +467,20 @@ export function DeviceStatus() {
                         variant="success"
                         onClick={() => handleUnlockDevice(device)}
                         disabled={
-                          unlockingDevices.has(device.tuyaDeviceId || device.id) ||
-                          lockingDevices.has(device.tuyaDeviceId || device.id) ||
+                          unlockingDevices.has(
+                            device.tuyaDeviceId || device.id,
+                          ) ||
+                          lockingDevices.has(
+                            device.tuyaDeviceId || device.id,
+                          ) ||
                           device.status === "offline" ||
                           device.status === "error"
                         }
                         className="flex-1"
                       >
-                        {unlockingDevices.has(device.tuyaDeviceId || device.id) ? (
+                        {unlockingDevices.has(
+                          device.tuyaDeviceId || device.id,
+                        ) ? (
                           <>
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                             Unlocking...
@@ -408,14 +497,20 @@ export function DeviceStatus() {
                         variant="danger"
                         onClick={() => handleLockDevice(device)}
                         disabled={
-                          lockingDevices.has(device.tuyaDeviceId || device.id) ||
-                          unlockingDevices.has(device.tuyaDeviceId || device.id) ||
+                          lockingDevices.has(
+                            device.tuyaDeviceId || device.id,
+                          ) ||
+                          unlockingDevices.has(
+                            device.tuyaDeviceId || device.id,
+                          ) ||
                           device.status === "offline" ||
                           device.status === "error"
                         }
                         className="flex-1"
                       >
-                        {lockingDevices.has(device.tuyaDeviceId || device.id) ? (
+                        {lockingDevices.has(
+                          device.tuyaDeviceId || device.id,
+                        ) ? (
                           <>
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                             Locking...
@@ -493,8 +588,8 @@ export function DeviceStatus() {
                     smartDoorLock.online
                       ? "border-green-200 bg-green-50"
                       : smartDoorLock.error
-                      ? "border-red-200 bg-red-50"
-                      : "border-gray-200 bg-gray-50"
+                        ? "border-red-200 bg-red-50"
+                        : "border-gray-200 bg-gray-50"
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -511,8 +606,8 @@ export function DeviceStatus() {
                         smartDoorLock.online
                           ? "success"
                           : smartDoorLock.error
-                          ? "danger"
-                          : "default"
+                            ? "danger"
+                            : "default"
                       }
                     >
                       {smartDoorLock.online ? "online" : "offline"}
@@ -570,7 +665,7 @@ export function DeviceStatus() {
                         <span>Active Since:</span>
                         <span>
                           {new Date(
-                            smartDoorLock.activeTime * 1000
+                            smartDoorLock.activeTime * 1000,
                           ).toLocaleString()}
                         </span>
                       </div>
@@ -580,35 +675,36 @@ export function DeviceStatus() {
                         <span>Last Updated:</span>
                         <span>
                           {new Date(
-                            smartDoorLock.updateTime * 1000
+                            smartDoorLock.updateTime * 1000,
                           ).toLocaleString()}
                         </span>
                       </div>
                     )}
-                    {smartDoorLock.status && smartDoorLock.status.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="font-medium mb-1">Status Codes:</p>
-                        <div className="space-y-1 max-h-32 overflow-y-auto">
-                          {smartDoorLock.status.map((s, idx) => (
-                            <div
-                              key={idx}
-                              className="flex justify-between text-xs"
-                            >
-                              <span className="font-mono text-gray-700">
-                                {s.code}:
-                              </span>
-                              <span className="text-gray-900">
-                                {typeof s.value === "boolean"
-                                  ? s.value.toString()
-                                  : typeof s.value === "number"
-                                  ? s.value
-                                  : String(s.value)}
-                              </span>
-                            </div>
-                          ))}
+                    {smartDoorLock.status &&
+                      smartDoorLock.status.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <p className="font-medium mb-1">Status Codes:</p>
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {smartDoorLock.status.map((s, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between text-xs"
+                              >
+                                <span className="font-mono text-gray-700">
+                                  {s.code}:
+                                </span>
+                                <span className="text-gray-900">
+                                  {typeof s.value === "boolean"
+                                    ? s.value.toString()
+                                    : typeof s.value === "number"
+                                      ? s.value
+                                      : String(s.value)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                   {smartDoorLock.error && (
                     <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
@@ -635,11 +731,14 @@ export function DeviceStatus() {
                           onClick={() => {
                             const device: Device = {
                               id: smartDoorLock.id || "",
-                              deviceName: smartDoorLock.name || "Smart Door Lock",
+                              deviceName:
+                                smartDoorLock.name || "Smart Door Lock",
                               location: "Main Entrance",
                               type: "lock",
                               tuyaDeviceId: smartDoorLock.id,
-                              status: smartDoorLock.online ? "online" : "offline",
+                              status: smartDoorLock.online
+                                ? "online"
+                                : "offline",
                               lastChecked: new Date().toISOString(),
                             };
                             handleUnlockDevice(device);
@@ -670,11 +769,14 @@ export function DeviceStatus() {
                           onClick={() => {
                             const device: Device = {
                               id: smartDoorLock.id || "",
-                              deviceName: smartDoorLock.name || "Smart Door Lock",
+                              deviceName:
+                                smartDoorLock.name || "Smart Door Lock",
                               location: "Main Entrance",
                               type: "lock",
                               tuyaDeviceId: smartDoorLock.id,
-                              status: smartDoorLock.online ? "online" : "offline",
+                              status: smartDoorLock.online
+                                ? "online"
+                                : "offline",
                               lastChecked: new Date().toISOString(),
                             };
                             handleLockDevice(device);
@@ -724,8 +826,8 @@ export function DeviceStatus() {
                     gateway.online
                       ? "border-green-200 bg-green-50"
                       : gateway.error
-                      ? "border-red-200 bg-red-50"
-                      : "border-gray-200 bg-gray-50"
+                        ? "border-red-200 bg-red-50"
+                        : "border-gray-200 bg-gray-50"
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -742,8 +844,8 @@ export function DeviceStatus() {
                         gateway.online
                           ? "success"
                           : gateway.error
-                          ? "danger"
-                          : "default"
+                            ? "danger"
+                            : "default"
                       }
                     >
                       {gateway.online ? "online" : "offline"}
@@ -794,9 +896,7 @@ export function DeviceStatus() {
                       <div className="flex justify-between">
                         <span>Active Since:</span>
                         <span>
-                          {new Date(
-                            gateway.activeTime * 1000
-                          ).toLocaleString()}
+                          {new Date(gateway.activeTime * 1000).toLocaleString()}
                         </span>
                       </div>
                     )}
@@ -804,9 +904,7 @@ export function DeviceStatus() {
                       <div className="flex justify-between">
                         <span>Last Updated:</span>
                         <span>
-                          {new Date(
-                            gateway.updateTime * 1000
-                          ).toLocaleString()}
+                          {new Date(gateway.updateTime * 1000).toLocaleString()}
                         </span>
                       </div>
                     )}
@@ -826,8 +924,8 @@ export function DeviceStatus() {
                                 {typeof s.value === "boolean"
                                   ? s.value.toString()
                                   : typeof s.value === "number"
-                                  ? s.value
-                                  : String(s.value)}
+                                    ? s.value
+                                    : String(s.value)}
                               </span>
                             </div>
                           ))}

@@ -134,3 +134,11 @@ export type {
   UpdateSemesterData,
   SemesterFilters,
 } from "./semester.service";
+
+export { syncService } from "./sync.service";
+export type {
+  DeviceSyncStatus,
+  SyncQueueItem,
+  LogGap,
+  CredentialSyncStatusItem,
+} from "./sync.service";

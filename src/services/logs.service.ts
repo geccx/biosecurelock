@@ -21,6 +21,14 @@ export interface AccessLogEntry {
   email?: string;
   details?: Record<string, unknown>;
   deviceResponse?: Record<string, unknown>;
+  /** Sync/retention: event occurred while device was offline */
+  offlineFlag?: boolean;
+  /** Sync/retention: realtime | buffered | reconciled */
+  retrievalStatus?: string;
+  /** Sync/retention: when log was retrieved from device */
+  syncTimestamp?: string | null;
+  /** Sync/retention: SHA256 for deduplication */
+  eventHash?: string | null;
 }
 
 export interface SystemLogEntry {
@@ -75,7 +83,7 @@ export const logsService = {
    * Get access logs with filtering
    */
   async getAccessLogs(
-    filters?: LogFilters
+    filters?: LogFilters,
   ): Promise<ApiResponse<AccessLogEntry[]>> {
     const params = new URLSearchParams();
     if (filters) {
@@ -86,7 +94,7 @@ export const logsService = {
       });
     }
     const response = await api.get<ApiResponse<AccessLogEntry[]>>(
-      `/logs/access?${params.toString()}`
+      `/logs/access?${params.toString()}`,
     );
     return response.data;
   },
@@ -96,7 +104,7 @@ export const logsService = {
    */
   async getAccessLogById(logId: number): Promise<ApiResponse<AccessLogEntry>> {
     const response = await api.get<ApiResponse<AccessLogEntry>>(
-      `/logs/access/${logId}`
+      `/logs/access/${logId}`,
     );
     return response.data;
   },
@@ -105,7 +113,7 @@ export const logsService = {
    * Get system activity logs (admin only)
    */
   async getSystemLogs(
-    filters?: LogFilters
+    filters?: LogFilters,
   ): Promise<ApiResponse<SystemLogEntry[]>> {
     const params = new URLSearchParams();
     if (filters) {
@@ -116,7 +124,7 @@ export const logsService = {
       });
     }
     const response = await api.get<ApiResponse<SystemLogEntry[]>>(
-      `/logs/system?${params.toString()}`
+      `/logs/system?${params.toString()}`,
     );
     return response.data;
   },
@@ -126,13 +134,13 @@ export const logsService = {
    */
   async getStats(
     userId?: number,
-    period?: string
+    period?: string,
   ): Promise<ApiResponse<LogStats>> {
     const params = new URLSearchParams();
     if (userId) params.append("userId", String(userId));
     if (period) params.append("period", period);
     const response = await api.get<ApiResponse<LogStats>>(
-      `/logs/stats?${params.toString()}`
+      `/logs/stats?${params.toString()}`,
     );
     return response.data;
   },
@@ -143,7 +151,7 @@ export const logsService = {
   async exportLogs(
     format?: "json" | "csv",
     startDate?: string,
-    endDate?: string
+    endDate?: string,
   ): Promise<Blob> {
     const params = new URLSearchParams();
     if (format) params.append("format", format);
@@ -167,7 +175,7 @@ export const logsService = {
       userId?: number;
       accessMethod?: string;
       success?: boolean;
-    }
+    },
   ): Promise<Blob> {
     const params = new URLSearchParams();
     params.append("format", format);
@@ -194,7 +202,7 @@ export const logsService = {
       endDate?: string;
       accessMethod?: string;
       success?: boolean;
-    }
+    },
   ): Promise<Blob> {
     const params = new URLSearchParams();
     params.append("format", format);
@@ -209,7 +217,7 @@ export const logsService = {
       `/logs/reports/teacher?${params.toString()}`,
       {
         responseType: "blob",
-      }
+      },
     );
     return response.data;
   },
@@ -225,7 +233,7 @@ export const logsService = {
       userId?: number;
       accessMethod?: string;
       success?: boolean;
-    }
+    },
   ): Promise<Blob> {
     const params = new URLSearchParams();
     params.append("format", format);
@@ -240,7 +248,7 @@ export const logsService = {
       `/logs/reports/techsupport?${params.toString()}`,
       {
         responseType: "blob",
-      }
+      },
     );
     return response.data;
   },
@@ -255,7 +263,7 @@ export const logsService = {
       endDate?: string;
       accessMethod?: string;
       success?: boolean;
-    }
+    },
   ): Promise<Blob> {
     const params = new URLSearchParams();
     params.append("format", format);
@@ -280,7 +288,7 @@ export const logsService = {
     filters?: {
       startDate?: string;
       endDate?: string;
-    }
+    },
   ): Promise<Blob> {
     const params = new URLSearchParams();
     params.append("format", format);
@@ -295,7 +303,7 @@ export const logsService = {
       `/logs/reports/visitor?${params.toString()}`,
       {
         responseType: "blob",
-      }
+      },
     );
     return response.data;
   },
@@ -320,7 +328,7 @@ export const logsService = {
       });
     }
     const response = await api.get<ApiResponse<TuyaUnlockingHistoryEntry[]>>(
-      `/logs/tuya/unlocking-history?${params.toString()}`
+      `/logs/tuya/unlocking-history?${params.toString()}`,
     );
     return response.data;
   },

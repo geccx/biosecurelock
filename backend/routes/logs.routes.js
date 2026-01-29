@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const logsController = require("../controllers/logs.controller");
+const syncController = require("../controllers/sync.controller");
 const {
   authenticate,
   requireAdmin,
@@ -83,7 +84,7 @@ router.get(
       req.query.userId = req.user.id.toString();
     }
     logsController.getAccessLogs(req, res, next);
-  }
+  },
 );
 
 // Get system activity logs (admin, tech support, and teachers for their own logs)
@@ -114,7 +115,7 @@ router.get(
       .withMessage("offset must be non-negative"),
   ],
   validate,
-  logsController.getSystemLogs
+  logsController.getSystemLogs,
 );
 
 // Get access statistics
@@ -140,7 +141,27 @@ router.get(
       req.query.userId = req.user.id.toString();
     }
     logsController.getAccessStats(req, res, next);
-  }
+  },
+);
+
+// Retrieve buffered logs from TUYA devices (admin/tech support)
+router.get(
+  "/retrieve",
+  authenticate,
+  requireAdminOrTechSupport,
+  [query("deviceId").optional().isInt()],
+  validate,
+  syncController.retrieveLogs,
+);
+
+// Identify missing log periods / gaps (admin/tech support)
+router.get(
+  "/gaps",
+  authenticate,
+  requireAdminOrTechSupport,
+  [query("deviceId").optional().isInt()],
+  validate,
+  syncController.getLogGaps,
 );
 
 // Get single access log by ID
@@ -149,7 +170,7 @@ router.get(
   authenticate,
   [param("logId").isInt().withMessage("logId must be an integer")],
   validate,
-  logsController.getAccessLogById
+  logsController.getAccessLogById,
 );
 
 // Get Tuya unlocking history (new v1.1 API)
@@ -201,7 +222,7 @@ router.get(
       .withMessage("showMediaInfo must be boolean"),
   ],
   validate,
-  logsController.getTuyaUnlockingHistory
+  logsController.getTuyaUnlockingHistory,
 );
 
 // Export logs
@@ -225,7 +246,7 @@ router.get(
       .withMessage("endDate must be valid ISO date"),
   ],
   validate,
-  logsController.exportLogs
+  logsController.exportLogs,
 );
 
 // Generate reports
@@ -249,7 +270,7 @@ router.get(
       .withMessage("endDate must be valid ISO date"),
   ],
   validate,
-  logsController.getAccessStats // Reuse stats controller for now
+  logsController.getAccessStats, // Reuse stats controller for now
 );
 
 // Generate Admin Report
@@ -291,7 +312,7 @@ router.get(
       .withMessage("success must be boolean"),
   ],
   validate,
-  logsController.generateAdminReport
+  logsController.generateAdminReport,
 );
 
 // Generate Teacher Report
@@ -338,7 +359,7 @@ router.get(
       });
     }
     logsController.generateTeacherReport(req, res, next);
-  }
+  },
 );
 
 // Generate Tech Support Report
@@ -379,7 +400,7 @@ router.get(
       .withMessage("success must be boolean"),
   ],
   validate,
-  logsController.generateTechSupportReport
+  logsController.generateTechSupportReport,
 );
 
 // Generate User Report
@@ -426,7 +447,7 @@ router.get(
       });
     }
     logsController.generateUserReport(req, res, next);
-  }
+  },
 );
 
 // Generate Visitor Report
@@ -456,7 +477,7 @@ router.get(
       });
     }
     logsController.generateVisitorReport(req, res, next);
-  }
+  },
 );
 
 module.exports = router;

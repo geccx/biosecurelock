@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const devicesController = require("../controllers/devices.controller");
+const syncController = require("../controllers/sync.controller");
 const {
   authenticate,
   requireAdmin,
@@ -25,7 +26,7 @@ const validate = (req, res, next) => {
 
 /**
  * Device Routes with Role-Based Access:
- * 
+ *
  * Admin: Full control (create, update, delete, check health)
  * Tech Support: View, refresh status, check health, troubleshoot
  * Teacher: View only
@@ -34,12 +35,20 @@ const validate = (req, res, next) => {
 // Get all devices (all authenticated users)
 router.get("/", authenticate, devicesController.getAllDevices);
 
+// Get all device sync status (admin/tech support) - must be before /:deviceId
+router.get(
+  "/status",
+  authenticate,
+  requireAdminOrTechSupport,
+  syncController.getAllDevicesStatus,
+);
+
 // Get online smart door locks from Tuya (admin only)
 router.get(
   "/online-door-locks",
   authenticate,
   requireAdmin,
-  devicesController.getOnlineSmartDoorLocks
+  devicesController.getOnlineSmartDoorLocks,
 );
 
 // Get device status with Tuya details (admin/tech support)
@@ -47,7 +56,7 @@ router.get(
   "/status/tuya",
   authenticate,
   requireAdminOrTechSupport,
-  devicesController.getDeviceStatusWithTuya
+  devicesController.getDeviceStatusWithTuya,
 );
 
 // Refresh all devices status (admin/tech support for monitoring)
@@ -55,7 +64,7 @@ router.post(
   "/refresh",
   authenticate,
   requireAdminOrTechSupport,
-  devicesController.refreshAllDevices
+  devicesController.refreshAllDevices,
 );
 
 // Get a single device (all authenticated users)
@@ -64,7 +73,33 @@ router.get(
   authenticate,
   param("deviceId").isInt(),
   validate,
-  devicesController.getDeviceById
+  devicesController.getDeviceById,
+);
+
+// Get single device sync status (admin/tech support)
+router.get(
+  "/:deviceId/status",
+  authenticate,
+  requireAdminOrTechSupport,
+  [param("deviceId").isInt()],
+  validate,
+  (req, res) => {
+    req.params.id = req.params.deviceId;
+    syncController.getDeviceStatus(req, res);
+  },
+);
+
+// Ping device connectivity (admin/tech support)
+router.post(
+  "/:deviceId/ping",
+  authenticate,
+  requireAdminOrTechSupport,
+  [param("deviceId").isInt()],
+  validate,
+  (req, res) => {
+    req.params.id = req.params.deviceId;
+    syncController.pingDevice(req, res);
+  },
 );
 
 // Create a new device (admin only)
@@ -79,7 +114,7 @@ router.post(
     body("tuyaDeviceId").optional().isString(),
   ],
   validate,
-  devicesController.createDevice
+  devicesController.createDevice,
 );
 
 // Update a device (admin only)
@@ -96,7 +131,7 @@ router.put(
     body("tuyaDeviceId").optional().isString(),
   ],
   validate,
-  devicesController.updateDevice
+  devicesController.updateDevice,
 );
 
 // Check device health (admin/tech support for troubleshooting)
@@ -106,7 +141,7 @@ router.post(
   requireAdminOrTechSupport,
   param("deviceId").isInt(),
   validate,
-  devicesController.checkDeviceHealth
+  devicesController.checkDeviceHealth,
 );
 
 // Troubleshoot device (tech support)
@@ -116,7 +151,7 @@ router.post(
   requireAdminOrTechSupport,
   param("deviceId").isInt(),
   validate,
-  devicesController.troubleshootDevice
+  devicesController.troubleshootDevice,
 );
 
 // Delete a device (admin only)
@@ -126,7 +161,7 @@ router.delete(
   requireAdmin,
   param("deviceId").isInt(),
   validate,
-  devicesController.deleteDevice
+  devicesController.deleteDevice,
 );
 
 // Get device logs from Tuya API
@@ -148,7 +183,7 @@ router.get(
     query("size").optional().isInt({ min: 1, max: 100 }),
   ],
   validate,
-  devicesController.getDeviceLogs
+  devicesController.getDeviceLogs,
 );
 
 // Get Tuya device logs using environment variable
@@ -169,7 +204,7 @@ router.get(
     query("size").optional().isInt({ min: 1, max: 100 }),
   ],
   validate,
-  devicesController.getTuyaDeviceLogs
+  devicesController.getTuyaDeviceLogs,
 );
 
 // Get Tuya gateway logs using environment variable
@@ -190,7 +225,7 @@ router.get(
     query("size").optional().isInt({ min: 1, max: 100 }),
   ],
   validate,
-  devicesController.getTuyaGatewayLogs
+  devicesController.getTuyaGatewayLogs,
 );
 
 // Get smart door lock and gateway status using GET /v1.0/devices/{device_id}
@@ -199,7 +234,7 @@ router.get(
   "/status/lock-and-gateway",
   authenticate,
   requireAdminOrTechSupport,
-  devicesController.getLockAndGatewayStatus
+  devicesController.getLockAndGatewayStatus,
 );
 
 module.exports = router;
