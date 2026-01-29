@@ -7,7 +7,12 @@ import { EditUserModal } from "../../components/admin/EditUserModal";
 import { ViewLocalUserModal } from "../../components/admin/ViewLocalUserModal";
 import { EditLocalUserModal } from "../../components/admin/EditLocalUserModal";
 import { CreateUserModal } from "../../components/admin/CreateUserModal";
-import { usersService, type TuyaUser, type BackendUser } from "../../services";
+import {
+  usersService,
+  type TuyaUser,
+  type TuyaAppUser,
+  type BackendUser,
+} from "../../services";
 import {
   EyeIcon,
   EditIcon,
@@ -21,24 +26,35 @@ import {
 } from "lucide-react";
 import { useAlert } from "../../contexts/AlertContext";
 
-type TabType = "tuya" | "local";
+type TabType = "tuya" | "local" | "mobileApp";
 
 export function UserManagement() {
   const { showAlert } = useAlert();
   const [activeTab, setActiveTab] = useState<TabType>("local");
   const [tuyaUsers, setTuyaUsers] = useState<TuyaUser[]>([]);
   const [localUsers, setLocalUsers] = useState<BackendUser[]>([]);
+  const [mobileAppUsers, setMobileAppUsers] = useState<TuyaAppUser[]>([]);
   const [loadingTuya, setLoadingTuya] = useState(true);
   const [loadingLocal, setLoadingLocal] = useState(true);
+  const [loadingMobileApp, setLoadingMobileApp] = useState(true);
+  const [mobileAppPage, setMobileAppPage] = useState(1);
+  const [mobileAppTotal, setMobileAppTotal] = useState(0);
+  const [mobileAppHasMore, setMobileAppHasMore] = useState(false);
+  const mobileAppPageSize = 20;
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<TuyaUser | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<TuyaUser | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedLocalUserId, setSelectedLocalUserId] = useState<string | null>(null);
+  const [selectedLocalUserId, setSelectedLocalUserId] = useState<string | null>(
+    null,
+  );
   const [isLocalUserModalOpen, setIsLocalUserModalOpen] = useState(false);
-  const [editingLocalUser, setEditingLocalUser] = useState<BackendUser | null>(null);
-  const [isEditLocalUserModalOpen, setIsEditLocalUserModalOpen] = useState(false);
+  const [editingLocalUser, setEditingLocalUser] = useState<BackendUser | null>(
+    null,
+  );
+  const [isEditLocalUserModalOpen, setIsEditLocalUserModalOpen] =
+    useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
   const [resettingPasswordUserId, setResettingPasswordUserId] = useState<
@@ -46,17 +62,29 @@ export function UserManagement() {
   >(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [roleSortDirection, setRoleSortDirection] = useState<"asc" | "desc" | null>(null);
+  const [roleSortDirection, setRoleSortDirection] = useState<
+    "asc" | "desc" | null
+  >(null);
   const [userTypeFilter, setUserTypeFilter] = useState<string>("all");
-  const [userTypeSortDirection, setUserTypeSortDirection] = useState<"asc" | "desc" | null>(null);
+  const [userTypeSortDirection, setUserTypeSortDirection] = useState<
+    "asc" | "desc" | null
+  >(null);
 
   useEffect(() => {
     if (activeTab === "tuya") {
       fetchTuyaUsers();
+    } else if (activeTab === "mobileApp") {
+      fetchMobileAppUsers();
     } else {
       fetchLocalUsers();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "mobileApp") {
+      fetchMobileAppUsers();
+    }
+  }, [mobileAppPage]);
 
   const fetchTuyaUsers = async () => {
     setLoadingTuya(true);
@@ -74,7 +102,7 @@ export function UserManagement() {
         `Failed to fetch Tuya users: ${
           error instanceof Error ? error.message : "Unknown error"
         }`,
-        "error"
+        "error",
       );
       setTuyaUsers([]);
     } finally {
@@ -98,11 +126,48 @@ export function UserManagement() {
         `Failed to fetch local users: ${
           error instanceof Error ? error.message : "Unknown error"
         }`,
-        "error"
+        "error",
       );
       setLocalUsers([]);
     } finally {
       setLoadingLocal(false);
+    }
+  };
+
+  const fetchMobileAppUsers = async () => {
+    setLoadingMobileApp(true);
+    try {
+      const endTime = Math.floor(Date.now() / 1000);
+      const startTime = endTime - 30 * 24 * 3600; // last 30 days
+      const response = await usersService.getTuyaAppUsers({
+        page_no: mobileAppPage,
+        page_size: mobileAppPageSize,
+        start_time: startTime,
+        end_time: endTime,
+      });
+      if (response && response.success && response.data) {
+        const usersData = Array.isArray(response.data) ? response.data : [];
+        setMobileAppUsers(usersData);
+        setMobileAppTotal(response.total ?? 0);
+        setMobileAppHasMore(response.has_more ?? false);
+      } else {
+        setMobileAppUsers([]);
+        setMobileAppTotal(0);
+        setMobileAppHasMore(false);
+      }
+    } catch (error) {
+      console.error("❌ Failed to fetch Mobile App users:", error);
+      showAlert(
+        `Failed to fetch Mobile App users: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        "error",
+      );
+      setMobileAppUsers([]);
+      setMobileAppTotal(0);
+      setMobileAppHasMore(false);
+    } finally {
+      setLoadingMobileApp(false);
     }
   };
 
@@ -121,7 +186,7 @@ export function UserManagement() {
           `User status changed to ${
             response.data?.status || "updated"
           } successfully`,
-          "success"
+          "success",
         );
       } else {
         showAlert(response.error || "Failed to toggle user status", "error");
@@ -132,7 +197,7 @@ export function UserManagement() {
         `Failed to toggle user status: ${
           error instanceof Error ? error.message : "Unknown error"
         }`,
-        "error"
+        "error",
       );
     } finally {
       setTogglingUserId(null);
@@ -142,7 +207,7 @@ export function UserManagement() {
   const handleResetPassword = async (userId: string, userEmail: string) => {
     if (
       !confirm(
-        `Are you sure you want to reset the password for ${userEmail}? The temporary password will be set to "1234567".`
+        `Are you sure you want to reset the password for ${userEmail}? The temporary password will be set to "1234567".`,
       )
     ) {
       return;
@@ -156,7 +221,7 @@ export function UserManagement() {
           `Password reset successfully!\n\nTemporary password: ${
             response.data?.temporaryPassword || "1234567"
           }\n\nPlease inform the user to change their password after logging in.`,
-          "success"
+          "success",
         );
       } else {
         showAlert(response.error || "Failed to reset password", "error");
@@ -181,11 +246,11 @@ export function UserManagement() {
   const handleDeleteUser = async (
     userId: string,
     userName: string,
-    userEmail: string
+    userEmail: string,
   ) => {
     if (
       !confirm(
-        `Are you sure you want to delete user ${userName} (${userEmail})? This will permanently delete the user account from the database and Tuya Cloud. This action cannot be undone.`
+        `Are you sure you want to delete user ${userName} (${userEmail})? This will permanently delete the user account from the database and Tuya Cloud. This action cannot be undone.`,
       )
     ) {
       return;
@@ -308,7 +373,7 @@ export function UserManagement() {
 
   // Get unique roles from users for filter dropdown
   const availableRoles = Array.from(
-    new Set(localUsers.map((user) => user.role))
+    new Set(localUsers.map((user) => user.role)),
   ).sort();
 
   // Filter and sort users
@@ -350,7 +415,7 @@ export function UserManagement() {
 
   // Get unique user types from Tuya users for filter dropdown
   const availableUserTypes = Array.from(
-    new Set(tuyaUsers.map((user) => user.user_type))
+    new Set(tuyaUsers.map((user) => user.user_type)),
   ).sort((a, b) => a - b);
 
   // Filter and sort Tuya users
@@ -413,7 +478,7 @@ export function UserManagement() {
       !confirm(
         `Are you sure you want to delete user ${userName} (${userContact})? This will permanently delete the user from Tuya Cloud${
           tuyaUser.localUserId ? " and the database" : ""
-        }. This action cannot be undone.`
+        }. This action cannot be undone.`,
       )
     ) {
       return;
@@ -423,7 +488,7 @@ export function UserManagement() {
     try {
       // Delete from Tuya Cloud
       const tuyaResponse = await usersService.deleteTuyaDeviceUser(
-        tuyaUser.user_id
+        tuyaUser.user_id,
       );
 
       if (tuyaResponse && tuyaResponse.success) {
@@ -435,7 +500,7 @@ export function UserManagement() {
             console.error("Failed to delete local user:", dbError);
             showAlert(
               "User deleted from Tuya Cloud, but failed to delete from database. Please delete manually.",
-              "warning"
+              "warning",
             );
           }
         }
@@ -444,7 +509,7 @@ export function UserManagement() {
         await fetchTuyaUsers();
         showAlert(
           tuyaResponse.message || "User deleted successfully",
-          "success"
+          "success",
         );
       } else {
         showAlert(tuyaResponse.error || "Failed to delete user", "error");
@@ -466,11 +531,20 @@ export function UserManagement() {
     }
   };
 
-  const isLoading = activeTab === "tuya" ? loadingTuya : loadingLocal;
+  const isLoading =
+    activeTab === "tuya"
+      ? loadingTuya
+      : activeTab === "mobileApp"
+        ? loadingMobileApp
+        : loadingLocal;
 
   if (
     isLoading &&
-    (activeTab === "tuya" ? tuyaUsers.length === 0 : localUsers.length === 0)
+    (activeTab === "tuya"
+      ? tuyaUsers.length === 0
+      : activeTab === "mobileApp"
+        ? mobileAppUsers.length === 0
+        : localUsers.length === 0)
   ) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -494,7 +568,13 @@ export function UserManagement() {
               Create User
             </Button>
             <Button
-              onClick={activeTab === "tuya" ? fetchTuyaUsers : fetchLocalUsers}
+              onClick={
+                activeTab === "tuya"
+                  ? fetchTuyaUsers
+                  : activeTab === "mobileApp"
+                    ? fetchMobileAppUsers
+                    : fetchLocalUsers
+              }
               disabled={isLoading}
               size="sm"
             >
@@ -525,6 +605,16 @@ export function UserManagement() {
               }`}
             >
               Tuya Device Users
+            </button>
+            <button
+              onClick={() => setActiveTab("mobileApp")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "mobileApp"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Mobile App Users
             </button>
           </nav>
         </div>
@@ -656,87 +746,91 @@ export function UserManagement() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <div className="flex items-center gap-2">
-                            <Button
-                              onClick={() => handleViewLocalUser(user)}
-                              size="sm"
-                              variant="ghost"
-                              disabled={
-                                togglingUserId === user.id ||
-                                resettingPasswordUserId === user.id ||
-                                deletingUserId === user.id
-                              }
-                              className="flex items-center gap-2"
-                            >
-                              <EyeIcon className="w-4 h-4" />
-                              View
-                            </Button>
-                            <Button
-                              onClick={() => handleEditLocalUser(user)}
-                              size="sm"
-                              variant="ghost"
-                              disabled={
-                                togglingUserId === user.id ||
-                                resettingPasswordUserId === user.id ||
-                                deletingUserId === user.id
-                              }
-                              className="flex items-center gap-2"
-                            >
-                              <EditIcon className="w-4 h-4" />
-                              Edit
-                            </Button>
-                            <Button
-                              onClick={() => handleToggleStatus(user.id)}
-                              size="sm"
-                              variant="ghost"
-                              disabled={
-                                togglingUserId === user.id ||
-                                resettingPasswordUserId === user.id
-                              }
-                              className="flex items-center gap-2"
-                            >
-                              <Power className="w-4 h-4" />
-                              {togglingUserId === user.id
-                                ? "Updating..."
-                                : user.status === "active"
-                                ? "Deactivate"
-                                : "Activate"}
-                            </Button>
-                            <Button
-                              onClick={() =>
-                                handleResetPassword(user.id, user.email)
-                              }
-                              size="sm"
-                              variant="ghost"
-                              disabled={
-                                togglingUserId === user.id ||
-                                resettingPasswordUserId === user.id ||
-                                deletingUserId === user.id
-                              }
-                              className="flex items-center gap-2"
-                            >
-                              <Key className="w-4 h-4" />
-                              {resettingPasswordUserId === user.id
-                                ? "Resetting..."
-                                : "Reset Password"}
-                            </Button>
-                            <Button
-                              onClick={() =>
-                                handleDeleteUser(user.id, user.name, user.email)
-                              }
-                              size="sm"
-                              variant="ghost"
-                              disabled={
-                                togglingUserId === user.id ||
-                                resettingPasswordUserId === user.id ||
-                                deletingUserId === user.id
-                              }
-                              className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                              {deletingUserId === user.id
-                                ? "Deleting..."
-                                : "Delete"}
-                            </Button>
+                              <Button
+                                onClick={() => handleViewLocalUser(user)}
+                                size="sm"
+                                variant="ghost"
+                                disabled={
+                                  togglingUserId === user.id ||
+                                  resettingPasswordUserId === user.id ||
+                                  deletingUserId === user.id
+                                }
+                                className="flex items-center gap-2"
+                              >
+                                <EyeIcon className="w-4 h-4" />
+                                View
+                              </Button>
+                              <Button
+                                onClick={() => handleEditLocalUser(user)}
+                                size="sm"
+                                variant="ghost"
+                                disabled={
+                                  togglingUserId === user.id ||
+                                  resettingPasswordUserId === user.id ||
+                                  deletingUserId === user.id
+                                }
+                                className="flex items-center gap-2"
+                              >
+                                <EditIcon className="w-4 h-4" />
+                                Edit
+                              </Button>
+                              <Button
+                                onClick={() => handleToggleStatus(user.id)}
+                                size="sm"
+                                variant="ghost"
+                                disabled={
+                                  togglingUserId === user.id ||
+                                  resettingPasswordUserId === user.id
+                                }
+                                className="flex items-center gap-2"
+                              >
+                                <Power className="w-4 h-4" />
+                                {togglingUserId === user.id
+                                  ? "Updating..."
+                                  : user.status === "active"
+                                    ? "Deactivate"
+                                    : "Activate"}
+                              </Button>
+                              <Button
+                                onClick={() =>
+                                  handleResetPassword(user.id, user.email)
+                                }
+                                size="sm"
+                                variant="ghost"
+                                disabled={
+                                  togglingUserId === user.id ||
+                                  resettingPasswordUserId === user.id ||
+                                  deletingUserId === user.id
+                                }
+                                className="flex items-center gap-2"
+                              >
+                                <Key className="w-4 h-4" />
+                                {resettingPasswordUserId === user.id
+                                  ? "Resetting..."
+                                  : "Reset Password"}
+                              </Button>
+                              <Button
+                                onClick={() =>
+                                  handleDeleteUser(
+                                    user.id,
+                                    user.name,
+                                    user.email,
+                                  )
+                                }
+                                size="sm"
+                                variant="ghost"
+                                disabled={
+                                  togglingUserId === user.id ||
+                                  resettingPasswordUserId === user.id ||
+                                  deletingUserId === user.id
+                                }
+                                className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                                {deletingUserId === user.id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -779,8 +873,8 @@ export function UserManagement() {
               <div className="overflow-x-auto">
                 <div className="mb-4 flex items-center justify-between">
                   <p className="text-sm text-gray-600">
-                    Showing <strong>{filteredAndSortedTuyaUsers.length}</strong> of{" "}
-                    <strong>{tuyaUsers.length}</strong> user
+                    Showing <strong>{filteredAndSortedTuyaUsers.length}</strong>{" "}
+                    of <strong>{tuyaUsers.length}</strong> user
                     {tuyaUsers.length !== 1 ? "s" : ""}
                   </p>
                   <div className="flex items-center gap-3">
@@ -864,136 +958,275 @@ export function UserManagement() {
                       </tr>
                     ) : (
                       filteredAndSortedTuyaUsers.map((tuyaUser, index) => (
-                      <tr
-                        key={tuyaUser.user_id || tuyaUser.tuyaUserId || index}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-mono text-gray-600">
-                            {(
-                              tuyaUser.user_id ||
-                              tuyaUser.tuyaUserId ||
-                              "N/A"
-                            ).substring(0, 12)}
-                            ...
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {getDisplayName(tuyaUser)}
+                        <tr
+                          key={tuyaUser.user_id || tuyaUser.tuyaUserId || index}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-mono text-gray-600">
+                              {(
+                                tuyaUser.user_id ||
+                                tuyaUser.tuyaUserId ||
+                                "N/A"
+                              ).substring(0, 12)}
+                              ...
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {getContactInfo(tuyaUser)}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={getUserTypeVariant(tuyaUser)}>
-                            {getUserTypeLabel(tuyaUser)}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {tuyaUser.unlockMethods &&
-                            tuyaUser.unlockMethods.length > 0 ? (
-                              <div className="space-y-1">
-                                {tuyaUser.unlockMethods.map((method, idx) => (
-                                  <div key={idx} className="text-xs">
-                                    <span className="font-medium">
-                                      {method.type.replace("unlock_", "")}:
-                                    </span>{" "}
-                                    {method.unlockName}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : tuyaUser.unlock_detail &&
-                              tuyaUser.unlock_detail.length > 0 ? (
-                              <div className="space-y-1">
-                                {tuyaUser.unlock_detail.map((detail, idx) => (
-                                  <div key={idx} className="text-xs">
-                                    <span className="font-medium">
-                                      {detail.dp_code.replace("unlock_", "")}
-                                    </span>
-                                    : {detail.count} method(s)
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">None</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={getStatusVariant(tuyaUser)}>
-                            {getUserStatus(tuyaUser)}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`text-sm font-medium ${
-                            tuyaUser.localUserId 
-                              ? "text-green-600" 
-                              : "text-gray-400"
-                          }`}>
-                            {tuyaUser.localUserId ? "Available" : "Unavailable"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {tuyaUser.time_schedule_info ? (
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div>
-                              {tuyaUser.time_schedule_info.permanent ? (
-                                <span className="text-green-600">
-                                  Permanent
-                                </span>
-                              ) : (
-                                <div>
-                                  <div className="text-xs">
-                                    {new Date(
-                                      tuyaUser.time_schedule_info
-                                        .effective_time * 1000
-                                    ).toLocaleDateString()}
-                                  </div>
-                                  <div className="text-xs">
-                                    to{" "}
-                                    {new Date(
-                                      tuyaUser.time_schedule_info.expired_time *
-                                        1000
-                                    ).toLocaleDateString()}
-                                  </div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {getDisplayName(tuyaUser)}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {getContactInfo(tuyaUser)}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={getUserTypeVariant(tuyaUser)}>
+                              {getUserTypeLabel(tuyaUser)}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900">
+                              {tuyaUser.unlockMethods &&
+                              tuyaUser.unlockMethods.length > 0 ? (
+                                <div className="space-y-1">
+                                  {tuyaUser.unlockMethods.map((method, idx) => (
+                                    <div key={idx} className="text-xs">
+                                      <span className="font-medium">
+                                        {method.type.replace("unlock_", "")}:
+                                      </span>{" "}
+                                      {method.unlockName}
+                                    </div>
+                                  ))}
                                 </div>
+                              ) : tuyaUser.unlock_detail &&
+                                tuyaUser.unlock_detail.length > 0 ? (
+                                <div className="space-y-1">
+                                  {tuyaUser.unlock_detail.map((detail, idx) => (
+                                    <div key={idx} className="text-xs">
+                                      <span className="font-medium">
+                                        {detail.dp_code.replace("unlock_", "")}
+                                      </span>
+                                      : {detail.count} method(s)
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">None</span>
                               )}
                             </div>
-                          ) : (
-                            <span className="text-gray-400">N/A</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              onClick={() => handleViewUser(tuyaUser)}
-                              size="sm"
-                              variant="ghost"
-                              disabled={deletingUserId === tuyaUser.user_id}
-                              className="flex items-center gap-2"
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={getStatusVariant(tuyaUser)}>
+                              {getUserStatus(tuyaUser)}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`text-sm font-medium ${
+                                tuyaUser.localUserId
+                                  ? "text-green-600"
+                                  : "text-gray-400"
+                              }`}
                             >
-                              <EyeIcon className="w-4 h-4" />
-                              View
-                            </Button>
-                          
-                            <Button
-                              onClick={() => handleDeleteTuyaUser(tuyaUser)}
-                              size="sm"
-                              variant="ghost"
-                              disabled={deletingUserId === tuyaUser.user_id}
-                              className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                              {deletingUserId === tuyaUser.user_id
-                                ? "Deleting..."
-                                : "Delete"}
-                            </Button>
-                          </div>
+                              {tuyaUser.localUserId
+                                ? "Available"
+                                : "Unavailable"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {tuyaUser.time_schedule_info ? (
+                              <div>
+                                {tuyaUser.time_schedule_info.permanent ? (
+                                  <span className="text-green-600">
+                                    Permanent
+                                  </span>
+                                ) : (
+                                  <div>
+                                    <div className="text-xs">
+                                      {new Date(
+                                        tuyaUser.time_schedule_info
+                                          .effective_time * 1000,
+                                      ).toLocaleDateString()}
+                                    </div>
+                                    <div className="text-xs">
+                                      to{" "}
+                                      {new Date(
+                                        tuyaUser.time_schedule_info
+                                          .expired_time * 1000,
+                                      ).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                onClick={() => handleViewUser(tuyaUser)}
+                                size="sm"
+                                variant="ghost"
+                                disabled={deletingUserId === tuyaUser.user_id}
+                                className="flex items-center gap-2"
+                              >
+                                <EyeIcon className="w-4 h-4" />
+                                View
+                              </Button>
+
+                              <Button
+                                onClick={() => handleDeleteTuyaUser(tuyaUser)}
+                                size="sm"
+                                variant="ghost"
+                                disabled={deletingUserId === tuyaUser.user_id}
+                                className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                                {deletingUserId === tuyaUser.user_id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mobile App Users Tab */}
+        {activeTab === "mobileApp" && (
+          <div>
+            {mobileAppUsers.length === 0 && !loadingMobileApp ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No Mobile App users found</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Users registered in the mobile app (schema: appsmartlock) in
+                  the last 30 days will appear here
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+                  <p className="text-sm text-gray-600">
+                    Showing page <strong>{mobileAppPage}</strong>
+                    {mobileAppTotal > 0 && (
+                      <>
+                        {" "}
+                        · <strong>{mobileAppTotal}</strong> total user
+                        {mobileAppTotal !== 1 ? "s" : ""} (last 30 days)
+                      </>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() =>
+                        setMobileAppPage((p) => Math.max(1, p - 1))
+                      }
+                      disabled={mobileAppPage <= 1 || loadingMobileApp}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm text-gray-600">
+                      Page {mobileAppPage}
+                    </span>
+                    <Button
+                      onClick={() => setMobileAppPage((p) => p + 1)}
+                      disabled={!mobileAppHasMore || loadingMobileApp}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        UID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Username
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Mobile
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Country
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Created
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Updated
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {loadingMobileApp ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="px-6 py-8 text-center text-gray-500"
+                        >
+                          Loading...
                         </td>
                       </tr>
+                    ) : mobileAppUsers.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="px-6 py-8 text-center text-gray-500"
+                        >
+                          No users in this page.
+                        </td>
+                      </tr>
+                    ) : (
+                      mobileAppUsers.map((user) => (
+                        <tr key={user.uid}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                            {user.uid}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {user.username || "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.mobile ?? "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.email ?? "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.country_code ?? "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.create_time
+                              ? new Date(
+                                  user.create_time * 1000,
+                                ).toLocaleString()
+                              : "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.update_time
+                              ? new Date(
+                                  user.update_time * 1000,
+                                ).toLocaleString()
+                              : "—"}
+                          </td>
+                        </tr>
                       ))
                     )}
                   </tbody>

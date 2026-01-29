@@ -141,7 +141,7 @@ class TuyaService {
       const decipher = crypto.createDecipheriv(
         "aes-256-ecb",
         keyBuffer,
-        null // ECB mode doesn't use IV
+        null, // ECB mode doesn't use IV
       );
 
       // Set auto padding (PKCS7)
@@ -178,7 +178,7 @@ class TuyaService {
       const cipher = crypto.createCipheriv(
         "aes-128-ecb",
         keyBuffer,
-        null // ECB mode doesn't use IV
+        null, // ECB mode doesn't use IV
       );
 
       // Set auto padding (PKCS7)
@@ -263,7 +263,7 @@ class TuyaService {
         method,
         fullPath, // Use full path with query string
         {},
-        bodyForSignature
+        bodyForSignature,
       );
 
       // Calculate signature
@@ -273,7 +273,7 @@ class TuyaService {
         timestamp,
         nonce,
         stringToSign,
-        this.clientSecret
+        this.clientSecret,
       );
 
       const headers = {
@@ -333,7 +333,7 @@ class TuyaService {
         throw new Error(
           `Tuya API Error: ${
             response.data.msg || response.data.code || "Unknown error"
-          }`
+          }`,
         );
       }
 
@@ -350,7 +350,7 @@ class TuyaService {
         if (response.data.result) {
           console.log(
             "  - result:",
-            JSON.stringify(response.data.result, null, 2)
+            JSON.stringify(response.data.result, null, 2),
           );
           if (response.data.result.id) {
             console.log("  - Password ID:", response.data.result.id);
@@ -374,15 +374,15 @@ class TuyaService {
           console.error(
             "\nHTTP Response Status:",
             error.response.status,
-            error.response.statusText
+            error.response.statusText,
           );
           console.error(
             "Response Headers:",
-            JSON.stringify(error.response.headers, null, 2)
+            JSON.stringify(error.response.headers, null, 2),
           );
           console.error(
             "Response Data:",
-            JSON.stringify(error.response.data, null, 2)
+            JSON.stringify(error.response.data, null, 2),
           );
           if (error.response.data?.code) {
             console.error("  - Error Code:", error.response.data.code);
@@ -404,8 +404,8 @@ class TuyaService {
                 hasData: !!error.config?.data,
               },
               null,
-              2
-            )
+              2,
+            ),
           );
         }
         console.error("Full Error Object:", error);
@@ -413,7 +413,7 @@ class TuyaService {
       } else {
         console.error(
           "Tuya API Request Error:",
-          error.response?.data || error.message
+          error.response?.data || error.message,
         );
       }
 
@@ -422,7 +422,7 @@ class TuyaService {
         process.env.DEBUG_SIGNATURE !== "true"
       ) {
         console.error(
-          "\n💡 Tip: Run with DEBUG_SIGNATURE=true to see signature details"
+          "\n💡 Tip: Run with DEBUG_SIGNATURE=true to see signature details",
         );
       }
 
@@ -466,7 +466,7 @@ class TuyaService {
         timestamp,
         nonce,
         stringToSign,
-        this.clientSecret
+        this.clientSecret,
       );
 
       const headers = {
@@ -485,7 +485,7 @@ class TuyaService {
       if (!response.data.success) {
         console.error("Tuya Token Error:", response.data);
         throw new Error(
-          `Failed to get token: ${response.data.msg || response.data.code}`
+          `Failed to get token: ${response.data.msg || response.data.code}`,
         );
       }
 
@@ -497,7 +497,7 @@ class TuyaService {
     } catch (error) {
       console.error(
         "Error getting Tuya token:",
-        error.response?.data || error.message
+        error.response?.data || error.message,
       );
       throw error;
     }
@@ -523,7 +523,7 @@ class TuyaService {
         timestamp,
         nonce,
         stringToSign,
-        this.clientSecret
+        this.clientSecret,
       );
 
       const headers = {
@@ -550,7 +550,7 @@ class TuyaService {
     } catch (error) {
       console.error(
         "Error refreshing token, getting new token:",
-        error.message
+        error.message,
       );
       return this._getToken();
     }
@@ -576,7 +576,7 @@ class TuyaService {
   async getDeviceState() {
     return await this._makeRequest(
       "GET",
-      `/v2.0/cloud/thing/${this.deviceId}/state`
+      `/v2.0/cloud/thing/${this.deviceId}/state`,
     );
   }
 
@@ -781,7 +781,7 @@ class TuyaService {
     queryObj.size = String(
       params.size !== undefined && params.size !== null
         ? Number(params.size)
-        : 20
+        : 20,
     );
 
     const path = `/v1.0/devices/${targetDeviceId}/logs`;
@@ -863,7 +863,7 @@ class TuyaService {
   async getDeviceProperties() {
     return await this._makeRequest(
       "GET",
-      `/v2.0/cloud/thing/${this.deviceId}/shadow/properties`
+      `/v2.0/cloud/thing/${this.deviceId}/shadow/properties`,
     );
   }
 
@@ -875,7 +875,7 @@ class TuyaService {
     return await this._makeRequest(
       "POST",
       `/v2.0/cloud/thing/${this.deviceId}/shadow/properties`,
-      { properties }
+      { properties },
     );
   }
 
@@ -887,7 +887,7 @@ class TuyaService {
     return await this._makeRequest(
       "POST",
       `/v2.0/cloud/thing/${this.deviceId}/shadow/properties/issue`,
-      { properties }
+      { properties },
     );
   }
 
@@ -899,7 +899,7 @@ class TuyaService {
     return await this._makeRequest(
       "POST",
       `/v2.0/cloud/thing/${this.deviceId}/shadow/actions`,
-      actions
+      actions,
     );
   }
 
@@ -910,7 +910,7 @@ class TuyaService {
   async getDeviceModel() {
     return await this._makeRequest(
       "GET",
-      `/v2.0/cloud/thing/${this.deviceId}/model`
+      `/v2.0/cloud/thing/${this.deviceId}/model`,
     );
   }
 
@@ -926,7 +926,7 @@ class TuyaService {
     const targetDeviceId = deviceId || this.deviceId;
     return await this._makeRequest(
       "GET",
-      `/v1.0/iot-03/devices/${targetDeviceId}/status`
+      `/v1.0/iot-03/devices/${targetDeviceId}/status`,
     );
   }
 
@@ -947,13 +947,43 @@ class TuyaService {
   }
 
   /**
+   * Get User List (Cloud Services - Smart Home User Management)
+   * GET /v2.0/apps/{schema}/users
+   * Reference: https://developer.tuya.com/en/docs/cloud/76f3e0885f?id=Kawfji9n0sdmq
+   * @param {string} schema - Channel identifier of the app (e.g. appsmartlock)
+   * @param {object} options - page_no (required), page_size (required), start_time (optional), end_time (optional), username (optional)
+   * @returns {Promise<{ list: Array, has_more: boolean, total: number }>}
+   */
+  async getAppUserList(schema, options = {}) {
+    const {
+      page_no = 1,
+      page_size = 20,
+      start_time,
+      end_time,
+      username,
+    } = options;
+    const queryParams = {
+      page_no: Number(page_no),
+      page_size: Number(page_size),
+    };
+    if (start_time != null) queryParams.start_time = Number(start_time);
+    if (end_time != null) queryParams.end_time = Number(end_time);
+    if (username) queryParams.username = String(username);
+    const path = `/v2.0/apps/${encodeURIComponent(schema)}/users`;
+    const result = await this._makeRequest("GET", path, queryParams);
+    return result && typeof result === "object" && Array.isArray(result.list)
+      ? result
+      : { list: [], has_more: false, total: 0 };
+  }
+
+  /**
    * Get device specification (Standard)
    * GET /v1.0/iot-03/devices/{device_id}/specification
    */
   async getDeviceSpecification() {
     return await this._makeRequest(
       "GET",
-      `/v1.0/iot-03/devices/${this.deviceId}/specification`
+      `/v1.0/iot-03/devices/${this.deviceId}/specification`,
     );
   }
 
@@ -964,7 +994,7 @@ class TuyaService {
   async getDeviceFunctions() {
     return await this._makeRequest(
       "GET",
-      `/v1.0/iot-03/devices/${this.deviceId}/functions`
+      `/v1.0/iot-03/devices/${this.deviceId}/functions`,
     );
   }
 
@@ -976,7 +1006,7 @@ class TuyaService {
     return await this._makeRequest(
       "POST",
       `/v1.0/iot-03/devices/${this.deviceId}/commands`,
-      { commands }
+      { commands },
     );
   }
 
@@ -994,32 +1024,32 @@ class TuyaService {
     try {
       const method = "GET";
       const path = `/v1.0/devices/${targetDeviceId}`;
-      
+
       // Get access token
       await this._ensureValidToken();
-      
+
       // Build request
       const timestamp = Date.now().toString();
       const nonce = crypto.randomBytes(16).toString("hex");
       const bodyForSignature = "";
       const queryParams = {};
-      
+
       const stringToSign = this._calcStringToSign(
         method,
         path,
         queryParams,
-        bodyForSignature
+        bodyForSignature,
       );
-      
+
       const sign = this._calcSign(
         this.clientId,
         this.accessToken,
         timestamp,
         nonce,
         stringToSign,
-        this.clientSecret
+        this.clientSecret,
       );
-      
+
       const headers = {
         client_id: this.clientId,
         access_token: this.accessToken,
@@ -1029,19 +1059,22 @@ class TuyaService {
         sign_method: "HMAC-SHA256",
         "Content-Type": "application/json",
       };
-      
+
       const url = `${this.apiEndpoint}${path}`;
-      
+
       const response = await axios({
         method,
         url,
         headers,
       });
-      
+
       // Return full response object (not just result)
       return response.data;
     } catch (error) {
-      console.error(`Error fetching device info for ${deviceId}:`, error.response?.data || error.message);
+      console.error(
+        `Error fetching device info for ${deviceId}:`,
+        error.response?.data || error.message,
+      );
       throw error;
     }
   }
@@ -1126,7 +1159,7 @@ class TuyaService {
     ) {
       try {
         console.log(
-          "\n[createTempPassword] Step 1: Getting password ticket..."
+          "\n[createTempPassword] Step 1: Getting password ticket...",
         );
         // Step 1: Get password ticket (returns ticket_id and encrypted ticket_key)
         const ticketResult = await this.getPasswordTicket(deviceId);
@@ -1134,7 +1167,7 @@ class TuyaService {
 
         if (!ticketResult.ticket_id || !ticketResult.ticket_key) {
           throw new Error(
-            "Invalid ticket response: missing ticket_id or ticket_key"
+            "Invalid ticket response: missing ticket_id or ticket_key",
           );
         }
 
@@ -1145,8 +1178,8 @@ class TuyaService {
           ticketResult.ticket_key.substring(0, 20) +
             "..." +
             ticketResult.ticket_key.substring(
-              ticketResult.ticket_key.length - 10
-            )
+              ticketResult.ticket_key.length - 10,
+            ),
         );
         console.log("  - expire_time:", ticketResult.expire_time, "seconds");
 
@@ -1154,18 +1187,18 @@ class TuyaService {
         // Step 2: Decrypt ticket_key using Access Secret (AES-256-ECB)
         // The ticket_key from getPasswordTicket is encrypted with Access Secret
         const decryptedTicketKey = this._decryptTicketKey(
-          ticketResult.ticket_key
+          ticketResult.ticket_key,
         );
         console.log(
           "  - Decrypted ticket_key (hex):",
           decryptedTicketKey.substring(0, 20) +
             "..." +
-            decryptedTicketKey.substring(decryptedTicketKey.length - 10)
+            decryptedTicketKey.substring(decryptedTicketKey.length - 10),
         );
         console.log(
           "  - Decrypted ticket_key length:",
           decryptedTicketKey.length,
-          "characters (hex)"
+          "characters (hex)",
         );
 
         console.log("\n[createTempPassword] Step 3: Encrypting password...");
@@ -1173,35 +1206,35 @@ class TuyaService {
         console.log(
           "  - Password length:",
           passwordData.password.length,
-          "digits"
+          "digits",
         );
         // Step 3: Encrypt password using decrypted ticket_key
         // Algorithm: AES-128-ECB with PKCS7Padding
         // Output format: hex (uppercase)
         encryptedPassword = this._encryptPasswordWithTicket(
           passwordData.password,
-          decryptedTicketKey
+          decryptedTicketKey,
         );
         console.log(
           "  - Encrypted password (hex):",
           encryptedPassword.substring(0, 20) +
             "..." +
-            encryptedPassword.substring(encryptedPassword.length - 10)
+            encryptedPassword.substring(encryptedPassword.length - 10),
         );
         console.log(
           "  - Encrypted password length:",
           encryptedPassword.length,
-          "characters (hex)"
+          "characters (hex)",
         );
         console.log("  - Encryption successful ✓");
       } catch (error) {
         console.error(
-          "\n[createTempPassword] ERROR in ticket/encryption process:"
+          "\n[createTempPassword] ERROR in ticket/encryption process:",
         );
         console.error("  - Error:", error.message);
         console.error("  - Stack:", error.stack);
         throw new Error(
-          `Failed to get ticket and encrypt password: ${error.message}`
+          `Failed to get ticket and encrypt password: ${error.message}`,
         );
       }
     }
@@ -1319,7 +1352,7 @@ class TuyaService {
     console.log("=".repeat(80));
     console.log("Device ID:", deviceId);
     console.log(
-      "Endpoint: POST /v1.0/devices/" + deviceId + "/door-lock/temp-password"
+      "Endpoint: POST /v1.0/devices/" + deviceId + "/door-lock/temp-password",
     );
     console.log("\nRequest Payload:");
     console.log(JSON.stringify(payload, null, 2));
@@ -1328,19 +1361,19 @@ class TuyaService {
       "  - password (encrypted):",
       payload.password.substring(0, 20) +
         "..." +
-        payload.password.substring(payload.password.length - 10)
+        payload.password.substring(payload.password.length - 10),
     );
     console.log("  - password_type:", payload.password_type);
     console.log("  - ticket_id:", payload.ticket_id);
     console.log(
       "  - effective_time:",
       payload.effective_time,
-      `(${new Date(payload.effective_time * 1000).toISOString()})`
+      `(${new Date(payload.effective_time * 1000).toISOString()})`,
     );
     console.log(
       "  - invalid_time:",
       payload.invalid_time,
-      `(${new Date(payload.invalid_time * 1000).toISOString()})`
+      `(${new Date(payload.invalid_time * 1000).toISOString()})`,
     );
     console.log("  - name:", payload.name);
     if (payload.phone) console.log("  - phone:", payload.phone);
@@ -1348,7 +1381,7 @@ class TuyaService {
       console.log(
         "  - type:",
         payload.type,
-        payload.type === 1 ? "(once)" : "(multiple)"
+        payload.type === 1 ? "(once)" : "(multiple)",
       );
     if (payload.time_zone !== undefined)
       console.log("  - time_zone:", payload.time_zone);
@@ -1357,7 +1390,7 @@ class TuyaService {
     if (payload.relate_dev_list)
       console.log(
         "  - relate_dev_list:",
-        JSON.stringify(payload.relate_dev_list)
+        JSON.stringify(payload.relate_dev_list),
       );
     console.log("=".repeat(80));
 
@@ -1367,7 +1400,7 @@ class TuyaService {
         "POST",
         `/v1.0/devices/${deviceId}/door-lock/temp-password`,
         {},
-        payload
+        payload,
       );
 
       // Log the result that will be returned
@@ -1391,20 +1424,20 @@ class TuyaService {
         console.error(
           "\nHTTP Response Status:",
           error.response.status,
-          error.response.statusText
+          error.response.statusText,
         );
         console.error(
           "Response Headers:",
-          JSON.stringify(error.response.headers, null, 2)
+          JSON.stringify(error.response.headers, null, 2),
         );
         console.error(
           "Response Data:",
-          JSON.stringify(error.response.data, null, 2)
+          JSON.stringify(error.response.data, null, 2),
         );
       } else if (error.request) {
         console.error(
           "Request was made but no response received:",
-          error.request
+          error.request,
         );
       }
       console.error("Full Error Object:", error);
@@ -1460,7 +1493,7 @@ class TuyaService {
     const queryParams = [];
     if (params.valid !== undefined) {
       queryParams.push(
-        `valid=${params.valid === true || params.valid === "true"}`
+        `valid=${params.valid === true || params.valid === "true"}`,
       );
     }
 
@@ -1480,7 +1513,7 @@ class TuyaService {
     const targetDeviceId = deviceId || this.deviceId;
     return await this._makeRequest(
       "GET",
-      `/v1.0/devices/${targetDeviceId}/door-lock/temp-password/${passwordId}`
+      `/v1.0/devices/${targetDeviceId}/door-lock/temp-password/${passwordId}`,
     );
   }
 
@@ -1492,7 +1525,7 @@ class TuyaService {
     const targetDeviceId = deviceId || this.deviceId;
     return await this._makeRequest(
       "DELETE",
-      `/v1.0/devices/${targetDeviceId}/door-lock/temp-passwords/${passwordId}`
+      `/v1.0/devices/${targetDeviceId}/door-lock/temp-passwords/${passwordId}`,
     );
   }
 
@@ -1520,12 +1553,12 @@ class TuyaService {
             (func.code.includes("door") ||
               func.code.includes("lock") ||
               func.code.includes("unlock") ||
-              func.code.includes("password"))
+              func.code.includes("password")),
         );
 
         if (!isDoorLock) {
           console.warn(
-            "Device may not be a door lock or may not support door lock features"
+            "Device may not be a door lock or may not support door lock features",
           );
         }
       } catch (checkError) {
@@ -1535,7 +1568,7 @@ class TuyaService {
 
       return await this._makeRequest(
         "GET",
-        `/v1.0/devices/${this.deviceId}/door-lock/dynamic-password`
+        `/v1.0/devices/${this.deviceId}/door-lock/dynamic-password`,
       );
     } catch (error) {
       // Handle error 2009 (device not supported) with clear message
@@ -1552,7 +1585,7 @@ class TuyaService {
         throw new Error(
           `Dynamic password is not supported by this Door Lock device (Matter type: 0x000A). ` +
             `Error code: 2009. This feature requires device firmware and hardware support. ` +
-            `Please verify that your door lock model supports dynamic password functionality.`
+            `Please verify that your door lock model supports dynamic password functionality.`,
         );
       }
       throw error;
@@ -1567,7 +1600,7 @@ class TuyaService {
     return await this._makeRequest(
       "POST",
       `/v1.0/devices/${this.deviceId}/door-lock/open-door`,
-      { password }
+      { password },
     );
   }
 
@@ -1602,7 +1635,7 @@ class TuyaService {
         });
       } catch (error) {
         throw new Error(
-          `Failed to get password ticket for unlock: ${error.message}`
+          `Failed to get password ticket for unlock: ${error.message}`,
         );
       }
     }
@@ -1617,7 +1650,7 @@ class TuyaService {
       "POST",
       `/v1.0/smart-lock/devices/${targetDeviceId}/password-free/door-operate`,
       {},
-      body
+      body,
     );
   }
 
@@ -1652,7 +1685,7 @@ class TuyaService {
         });
       } catch (error) {
         throw new Error(
-          `Failed to get password ticket for lock: ${error.message}`
+          `Failed to get password ticket for lock: ${error.message}`,
         );
       }
     }
@@ -1667,7 +1700,7 @@ class TuyaService {
       "POST",
       `/v1.0/smart-lock/devices/${targetDeviceId}/password-free/door-operate`,
       {},
-      body
+      body,
     );
   }
 
@@ -1936,7 +1969,7 @@ class TuyaService {
       "POST",
       `/v1.0/smart-lock/devices/${this.deviceId}/opmodes/actions/sync`,
       null, // No query params
-      { codes: String(code) } // Single code in body
+      { codes: String(code) }, // Single code in body
     );
   }
 
@@ -1947,7 +1980,7 @@ class TuyaService {
   async getUnassignedKeys() {
     return await this._makeRequest(
       "GET",
-      `/v1.0/devices/${this.deviceId}/door-lock/unassigned-keys`
+      `/v1.0/devices/${this.deviceId}/door-lock/unassigned-keys`,
     );
   }
 
@@ -1980,7 +2013,7 @@ class TuyaService {
             unlock_sn: parseInt(unlockSn),
           },
         ],
-      }
+      },
     );
   }
 
@@ -2033,7 +2066,7 @@ class TuyaService {
       "POST",
       `/v1.0/devices/${this.deviceId}/door-lock/opmodes/actions/allocate`,
       {},
-      body
+      body,
     );
   }
 
@@ -2067,7 +2100,7 @@ class TuyaService {
       "POST",
       `/v1.0/devices/${this.deviceId}/device-lock/users/${userId}/allocate`,
       {},
-      body
+      body,
     );
   }
 
@@ -2079,7 +2112,7 @@ class TuyaService {
     return await this._makeRequest(
       "PUT",
       `/v1.0/devices/${this.deviceId}/door-lock/opmodes/${unlockSn}`,
-      { name }
+      { name },
     );
   }
 
@@ -2090,11 +2123,11 @@ class TuyaService {
     unlockType,
     unlockNo,
     userType = "home_user",
-    userId
+    userId,
   ) {
     return await this._makeRequest(
       "DELETE",
-      `/v1.0/devices/${this.deviceId}/door-lock/user-types/${userType}/users/${userId}/unlock-types/${unlockType}/keys/${unlockNo}`
+      `/v1.0/devices/${this.deviceId}/door-lock/user-types/${userType}/users/${userId}/unlock-types/${unlockType}/keys/${unlockNo}`,
     );
   }
 
@@ -2123,7 +2156,6 @@ class TuyaService {
     return this.getDeviceUsersById(deviceId, params);
   }
 
-  
   /**
    * Get device users with device ID parameter
    * Reference: https://developer.tuya.com/en/docs/cloud/doorlock-api-member?id=Kbe2o84on6zgh#title-13-Query%20user%20list%20by%20device%20ID%20(v1.1)
@@ -2230,12 +2262,12 @@ class TuyaService {
 
       if (!targetDeviceId) {
         throw new Error(
-          "Device ID is required. Set TUYA_DEVICE_ID in environment."
+          "Device ID is required. Set TUYA_DEVICE_ID in environment.",
         );
       }
 
       console.log(
-        `[getAllDeviceUsers] Fetching users for device: ${targetDeviceId}`
+        `[getAllDeviceUsers] Fetching users for device: ${targetDeviceId}`,
       );
 
       // Get users from all unlock methods
@@ -2249,7 +2281,7 @@ class TuyaService {
       for (const code of unlockCodes) {
         try {
           console.log(
-            `[getAllDeviceUsers] Fetching users with unlock code: ${code}`
+            `[getAllDeviceUsers] Fetching users with unlock code: ${code}`,
           );
 
           const result = await this.getDeviceUsersById(targetDeviceId, {
@@ -2260,7 +2292,7 @@ class TuyaService {
 
           if (result && result.records && Array.isArray(result.records)) {
             console.log(
-              `[getAllDeviceUsers] Found ${result.records.length} users for ${code}`
+              `[getAllDeviceUsers] Found ${result.records.length} users for ${code}`,
             );
 
             // Add/merge users
@@ -2285,7 +2317,7 @@ class TuyaService {
         } catch (error) {
           console.warn(
             `[getAllDeviceUsers] Failed to fetch ${code}:`,
-            error.message
+            error.message,
           );
           // Continue with other codes
         }
@@ -2356,7 +2388,7 @@ class TuyaService {
       const result = await this._makeRequest("GET", path, queryObj, null);
       console.log(
         `[queryUsers] Raw response:`,
-        JSON.stringify(result, null, 2)
+        JSON.stringify(result, null, 2),
       );
 
       // Return raw response to match test script expectations
@@ -2384,7 +2416,7 @@ class TuyaService {
           func.code &&
           (func.code.includes("unlock") ||
             func.code.includes("open") ||
-            func.code.includes("door"))
+            func.code.includes("door")),
       );
 
       return {
@@ -2455,7 +2487,7 @@ class TuyaService {
    */
   async encryptPasswordForTempPassword(plainPassword) {
     throw new Error(
-      "encryptPasswordForTempPassword has been removed. Please handle encryption externally."
+      "encryptPasswordForTempPassword has been removed. Please handle encryption externally.",
     );
   }
 
@@ -2602,12 +2634,12 @@ class TuyaService {
     }
     if (!userData.uid) {
       throw new Error(
-        "uid is required for addDeviceUser. User must be registered in Tuya platform first."
+        "uid is required for addDeviceUser. User must be registered in Tuya platform first.",
       );
     }
     if (userData.user_type === undefined || userData.user_type === null) {
       throw new Error(
-        "user_type is required for addDeviceUser (10=admin, 20=common user, 50=home owner)"
+        "user_type is required for addDeviceUser (10=admin, 20=common user, 50=home owner)",
       );
     }
 
@@ -2788,7 +2820,7 @@ class TuyaService {
       const result = await this._makeRequest("GET", path, queryObj, null);
       console.log(
         `[queryUsers] Raw response:`,
-        JSON.stringify(result, null, 2)
+        JSON.stringify(result, null, 2),
       );
 
       // Return raw response to match test script expectations

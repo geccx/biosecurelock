@@ -15,6 +15,7 @@ export type {
   UpdateUserData,
   Teacher,
   TuyaUser,
+  TuyaAppUser,
 } from "./users.service";
 
 export { accessService } from "./access.service";
